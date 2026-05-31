@@ -51,6 +51,10 @@ const CMD = {
   START_BOOT_CAL: 0x02,
   START_MAG_CAL: 0x03,
   END_MAG_CAL: 0x04,
+  START_STATIC_ALIGN: 0x05,
+  RECORD_STATIC_POSE: 0x06,
+  ENTER_RUNNING: 0x07,
+  SET_MAG_USAGE: 0x08,
   SET_KNOTS: 0x10,
   SET_COUPLING: 0x11,
   SAVE_CAL: 0x12,
@@ -71,7 +75,8 @@ const CALIBRATION_STEPS = [
 
 const CAL_FINGER_NAMES = ['Pinky', 'Ring', 'Middle', 'Index', 'Thumb'];
 const CAL_AXIS_NAMES = ['Yaw', 'Pitch 1', 'Pitch 2', 'Thumb IP'];
-const COUPLING_LABELS = ['p2→p1', 'yaw→p1', 'yaw→p2', 'p1→p2'];
+const COUPLING_LABELS_STANDARD = ['p2→p1', 'yaw→p1', 'yaw→p2', 'p1→p2'];
+const COUPLING_LABELS_THUMB = ['p2→p1', 'yaw→p1', 'yaw→p2', 'p1→p2', 'ip→p1', 'yaw→ip'];
 
 // ch0-15 → finger/axis label (from firmware config.h FINGER_DEFAULTS)
 const CH_LABELS = [
@@ -146,10 +151,11 @@ function buildKnotsPayload(fingerIdx, axisIdx, knots) {
 }
 
 function buildCouplingPayload(fingerIdx, coeffs) {
-  const buf = new ArrayBuffer(1 + (4 * 4));
+  const len = coeffs.length;
+  const buf = new ArrayBuffer(1 + (len * 4));
   const view = new DataView(buf);
   view.setUint8(0, fingerIdx);
-  for (let i = 0; i < 4; i += 1) {
+  for (let i = 0; i < len; i += 1) {
     view.setFloat32(1 + (i * 4), coeffs[i] ?? 0, true);
   }
   return new Uint8Array(buf);
@@ -159,6 +165,78 @@ function quatFromEuler(x, y, z) {
   const q = new THREE.Quaternion();
   q.setFromEuler(new THREE.Euler(x, y, z, 'XYZ'));
   return [q.x, q.y, q.z, q.w];
+}
+
+function ConvertToThreeSpace(q) {
+  // Direct pass-through (X=X, Y=Y, Z=Z). If X was right but Y/Z were swapped, this swaps them back!
+  return new THREE.Quaternion(q.x, q.y, q.z, q.w).normalize();
+}
+
+function AlignmentPanel({ modelAlign, setModelAlign, onCalibrate, onTare }) {
+  const cycleAlign = (part, axis) => {
+    setModelAlign(prev => {
+      const newPart = [...prev[part]];
+      let val = parseFloat(newPart[axis]) || 0;
+      val = ((val % 360) + 360) % 360;
+      val = (val + 90) % 360;
+      newPart[axis] = val;
+      return { ...prev, [part]: newPart };
+    });
+  };
+
+  const renderAxisButton = (label, part, axis) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <span style={{ fontSize: 9, color: '#718096', marginBottom: 2 }}>{label}</span>
+      <button
+        onClick={() => cycleAlign(part, axis)}
+        style={{
+          width: 44,
+          background: 'rgba(255,255,255,0.1)',
+          color: '#e2b96f',
+          border: '1px solid #4a5568',
+          borderRadius: 4,
+          padding: '4px 0',
+          fontSize: 11,
+          cursor: 'pointer',
+          fontVariantNumeric: 'tabular-nums'
+        }}
+      >
+        {parseFloat(modelAlign[part][axis]) || 0}°
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ background: 'rgba(10,12,28,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(12px)', padding: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#a0aec0', letterSpacing: '0.8px', textTransform: 'uppercase' }}>🔧 Proxy Alignment</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={onTare} style={{ background: '#60a5fa', color: '#000', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 'bold', cursor: 'pointer' }}>Tare (Space)</button>
+          <button onClick={onCalibrate} style={{ background: '#34d399', color: '#000', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 'bold', cursor: 'pointer' }}>Calibrate Mount (C)</button>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#e2e8f0', width: 60 }}>Upper Arm</span>
+          {renderAxisButton("X", "upper", 0)}
+          {renderAxisButton("Y", "upper", 1)}
+          {renderAxisButton("Z", "upper", 2)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#e2e8f0', width: 60 }}>Forearm</span>
+          {renderAxisButton("X", "forearm", 0)}
+          {renderAxisButton("Y", "forearm", 1)}
+          {renderAxisButton("Z", "forearm", 2)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#e2e8f0', width: 60 }}>Hand</span>
+          {renderAxisButton("X", "hand", 0)}
+          {renderAxisButton("Y", "hand", 1)}
+          {renderAxisButton("Z", "hand", 2)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Returns true if the finger at fingerIdx (0=Pinky…4=Thumb) is calibrated
@@ -183,9 +261,9 @@ function buildFingerEulers(fingers, thumbExtra, calStatus = 0xFF, isLeft = false
   // Unity script New_Magnets.cs mapping:
   // Thumb: X=0, Y=Yaw, Z=Pitch (Positive Z curls inward)
   // Others: X=Pitch, Y=0, Z=Yaw (Negative X curls inward in Three.js right-handed system)
-  const thumbMcpEuler = (f) => [isLeft ? -toRad(f.yaw) : toRad(f.yaw), 0, toRad(f.pitch1)];
-  const thumbPipEuler = (f) => [0, 0, toRad(f.pitch2)];
-  const thumbIpEuler = [0, 0, toRad(thumbExtra)];
+  const thumbMcpEuler = (f) => [toRad(f.yaw), 0, isLeft ? -toRad(f.pitch1) : toRad(f.pitch1)];
+  const thumbPipEuler = (f) => [0, 0, isLeft ? -toRad(f.pitch2) : toRad(f.pitch2)];
+  const thumbIpEuler = [0, 0, isLeft ? -toRad(thumbExtra) : toRad(thumbExtra)];
 
   const fingerMcpEuler = (f) => [-toRad(f.pitch1), 0, isLeft ? -toRad(f.yaw) : toRad(f.yaw)];
   const fingerPipEuler = (f) => [-toRad(f.pitch2), 0, 0];
@@ -251,6 +329,8 @@ function useGloveWebSocket(ipAddress, onFrame) {
     imuTimestamp: null,
     fingerTimestamp: null,
     imuDiag: null,
+    consoleLogs: [],
+    imuPoseIdx: 0,
   });
   const imuQuatRef = useRef(null);
   const fingerAnglesRef = useRef(null);
@@ -280,10 +360,29 @@ function useGloveWebSocket(ipAddress, onFrame) {
       setGloveState(prev => ({ ...prev, connected: false }));
       wsRef.current = null;
     };
-    socket.onerror = (e) => console.error('[Glove] Error:', e);
+    socket.onerror = (e) => console.warn('\[Glove\] Error:', e);
 
     socket.onmessage = async (event) => {
       try {
+        if (typeof event.data === 'string') {
+          const logMsg = event.data;
+          setGloveState(prev => {
+            const newLogs = [...prev.consoleLogs, logMsg].slice(-50); // Keep last 50 logs
+
+            let newPoseIdx = prev.imuPoseIdx;
+            const match = logMsg.match(/Recorded Pose (\d+)\/6 successfully/);
+            if (match) {
+              newPoseIdx = parseInt(match[1], 10);
+            }
+            if (logMsg.includes("Static 6-poses calibration initialized") || logMsg.includes("Restarting calibration")) {
+              newPoseIdx = 0;
+            }
+
+            return { ...prev, consoleLogs: newLogs, imuPoseIdx: newPoseIdx };
+          });
+          return;
+        }
+
         const buffer = event.data instanceof ArrayBuffer
           ? event.data
           : await event.data.arrayBuffer();
@@ -321,18 +420,75 @@ function useGloveWebSocket(ipAddress, onFrame) {
           const timestamp = view.getUint32(4, true);
 
           // Firmware sends [w, x, y, z] — map to Three.js [x, y, z, w]
-          const qw = view.getFloat32(8, true);
-          const qx = view.getFloat32(12, true);
-          const qy = view.getFloat32(16, true);
-          const qz = view.getFloat32(20, true);
+          let imuQuat;
+          if (view.byteLength >= 56) {
+            // New 3-IMU format
+            const u_qw = view.getFloat32(8, true);
+            const u_qx = view.getFloat32(12, true);
+            const u_qy = view.getFloat32(16, true);
+            const u_qz = view.getFloat32(20, true);
 
-          const q = new THREE.Quaternion(qx, qy, qz, qw).normalize();
-          const imuQuat = [q.x, q.y, q.z, q.w];
+            const f_qw = view.getFloat32(24, true);
+            const f_qx = view.getFloat32(28, true);
+            const f_qy = view.getFloat32(32, true);
+            const f_qz = view.getFloat32(36, true);
+
+            const h_qw = view.getFloat32(40, true);
+            const h_qx = view.getFloat32(44, true);
+            const h_qy = view.getFloat32(48, true);
+            const h_qz = view.getFloat32(52, true);
+
+            const qU = new THREE.Quaternion(u_qx, u_qy, u_qz, u_qw).normalize();
+            const qF = new THREE.Quaternion(f_qx, f_qy, f_qz, f_qw).normalize();
+            const qH = new THREE.Quaternion(h_qx, h_qy, h_qz, h_qw).normalize();
+
+            // NaN safety check to prevent 3D model from stretching if filter diverges
+            if (isNaN(qU.x) || isNaN(qF.x) || isNaN(qH.x)) return;
+
+            imuQuat = {
+              upperArm: [qU.x, qU.y, qU.z, qU.w],
+              forearm: [qF.x, qF.y, qF.z, qF.w],
+              hand: [qH.x, qH.y, qH.z, qH.w]
+            };
+          } else {
+            // Old 1-IMU format (Hand only)
+            const qw = view.getFloat32(8, true);
+            const qx = view.getFloat32(12, true);
+            const qy = view.getFloat32(16, true);
+            const qz = view.getFloat32(20, true);
+
+            const qH = new THREE.Quaternion(qx, qy, qz, qw).normalize();
+            imuQuat = { hand: [qH.x, qH.y, qH.z, qH.w] };
+          }
           imuQuatRef.current = imuQuat;
 
-          // ── Diagnostic fields (available when packet >= 90 bytes) ──────────
+          // ── Diagnostic fields ──────────
           let imuDiag = null;
-          if (view.byteLength >= IMU_PACKET_MIN_SIZE) {
+          if (view.byteLength >= 136) {
+            // New 136-byte ArmTrackerPacket
+            const current_state = view.getUint8(56);
+            const accel_mag = [view.getFloat32(57, true), view.getFloat32(61, true), view.getFloat32(65, true)];
+            const mag_norm = [view.getFloat32(69, true), view.getFloat32(73, true), view.getFloat32(77, true)];
+            const drift_exposure = [view.getFloat32(81, true), view.getFloat32(85, true), view.getFloat32(89, true)];
+            const mag_clean = [view.getUint8(93), view.getUint8(94), view.getUint8(95)];
+            const ref_accel_mag = [view.getFloat32(96, true), view.getFloat32(100, true), view.getFloat32(104, true)];
+            const time_since_good_accel = [view.getFloat32(108, true), view.getFloat32(112, true), view.getFloat32(116, true)];
+            const safe_upper_yaw = view.getFloat32(120, true);
+            const safe_elbow_pitch = view.getFloat32(124, true);
+            const safe_forearm_roll = view.getFloat32(128, true);
+            const phone_yaw_correction = view.getFloat32(132, true);
+
+            imuDiag = {
+              perImu: {
+                upperArm: { accelMag: accel_mag[0], magNorm: mag_norm[0], drift: drift_exposure[0], magClean: mag_clean[0], timeAccel: time_since_good_accel[0] },
+                forearm: { accelMag: accel_mag[1], magNorm: mag_norm[1], drift: drift_exposure[1], magClean: mag_clean[1], timeAccel: time_since_good_accel[1] },
+                hand: { accelMag: accel_mag[2], magNorm: mag_norm[2], drift: drift_exposure[2], magClean: mag_clean[2], timeAccel: time_since_good_accel[2] }
+              },
+              currentState: current_state,
+              phoneYawCorrection: phone_yaw_correction
+            };
+          } else if (view.byteLength === 90) {
+            // Old 90-byte packet
             imuDiag = {
               timeSinceGoodAccel: view.getFloat32(32, true),  // seconds
               driftExposure: view.getFloat32(36, true),  // seconds of low-accel
@@ -390,7 +546,7 @@ function useGloveWebSocket(ipAddress, onFrame) {
             leftVoltages[i] = view.getFloat32(72 + i * 4, true);
           }
           const leftConnected = view.getUint8(136) === 1;
-          
+
           if (onFrame) {
             onFrame({ source: 'raw_dual', rightVoltages, leftVoltages, timestamp, leftConnected });
           }
@@ -646,7 +802,6 @@ function FingerAnglesPanel({ frame, calStatus = 0 }) {
 }
 
 // ─── IMU Diagnostics HUD ──────────────────────────────────────────────────────
-// Shows wrist-IMU health metrics parsed from the 90-byte IMU packet.
 function IMUDiagnosticsPanel({ diag, imuQuat }) {
   if (!diag && !imuQuat) return null;
 
@@ -676,56 +831,95 @@ function IMUDiagnosticsPanel({ diag, imuQuat }) {
     pill: (on) => ({ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: on ? 'rgba(96,165,250,0.12)' : 'rgba(74,85,104,0.2)', color: on ? '#60a5fa' : '#4a5568', border: `1px solid ${on ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.06)'}` }),
   };
 
+  const imus = [
+    { key: 'upperArm', label: 'Upper Arm IMU', data: imuQuat?.upperArm, diag: diag?.perImu?.upperArm },
+    { key: 'forearm', label: 'Forearm IMU', data: imuQuat?.forearm, diag: diag?.perImu?.forearm },
+    { key: 'hand', label: 'Hand IMU', data: imuQuat?.hand || imuQuat, diag: diag?.perImu?.hand }
+  ];
+
+  const STATE_LABELS = ['IDLE', 'BOOT CAL', 'STATIC ALIGN WAIT', 'STATIC ALIGN RECORDING', 'RUNNING', 'MAG CAL'];
+
   return (
     <div style={d.wrap}>
       <div style={d.header}>
-        <span style={d.title}>📡 Wrist IMU</span>
+        <span style={d.title}>📡 IMU Diagnostics & Telemetry</span>
         <span style={d.badge}>{imuQuat ? 'LIVE' : 'NO SIGNAL'}</span>
       </div>
-      <div style={d.body}>
-        {/* Quaternion live values */}
-        {imuQuat && (
-          <div style={d.row}>
-            <span style={d.key}>Quaternion</span>
-            <span style={{ ...d.val, fontSize: 10.5 }}>
-              [{imuQuat.map(v => v.toFixed(3)).join(', ')}]
-            </span>
-          </div>
-        )}
-        {/* Mag stability bar */}
-        <div>
-          <div style={{ ...d.row, marginBottom: 4 }}>
-            <span style={d.key}>Mag Stability</span>
-            <span style={{ ...d.val, color: magColor }}>{diag ? `${magPct}%` : '—'}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={d.barBg}>
-              <div style={d.barFill(magPct ?? 0, magColor)} />
+
+      <div style={d.grid}>
+        {imus.map((imu) => {
+          if (!imu.data || !Array.isArray(imu.data)) return null;
+          return (
+            <div key={imu.key} style={d.card}>
+              <div style={d.cardTitle}>
+                <span>{imu.label}</span>
+                <span style={{ color: '#34d399', fontSize: 10 }}>● Active</span>
+              </div>
+
+              {imu.diag ? (
+                <div>
+                  <div style={d.row}>
+                    <span style={d.key}>Drift Exposure</span>
+                    <span style={{ ...d.val, color: imu.diag.drift > 0.035 ? '#f59e0b' : '#34d399' }}>{imu.diag.drift.toFixed(3)} rad</span>
+                  </div>
+                  <div style={d.row}>
+                    <span style={d.key}>Accel Magnitude</span>
+                    <span style={d.val}>{imu.diag.accelMag.toFixed(3)} g</span>
+                  </div>
+                  <div style={d.row}>
+                    <span style={d.key}>Mag Norm</span>
+                    <span style={d.val}>{imu.diag.magNorm.toFixed(1)} µT</span>
+                  </div>
+                  <div style={d.row}>
+                    <span style={d.key}>Stale Accel</span>
+                    <span style={{ ...d.val, color: imu.diag.timeAccel > 1 ? '#ef4444' : '#e2b96f' }}>{imu.diag.timeAccel.toFixed(1)}s</span>
+                  </div>
+                  <div style={d.row}>
+                    <span style={d.key}>Magnetometer</span>
+                    <span style={d.pill(imu.diag.magClean)}>{imu.diag.magClean ? 'CLEAN' : 'CORRUPT'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: '#718096', fontStyle: 'italic', padding: '10px 0' }}>
+                  No per-IMU telemetry available.
+                </div>
+              )}
             </div>
-            <span style={d.pill(useMag)}>{useMag ? 'MAG ON' : 'MAG OFF'}</span>
-          </div>
-        </div>
-        {/* Drift exposure */}
-        <div style={d.row}>
-          <span style={d.key}>Drift Exposure</span>
-          <span style={{ ...d.val, color: drift > 5 ? '#f59e0b' : '#e2b96f' }}>
-            {diag ? `${drift}s` : '—'}
-          </span>
-        </div>
-        {/* Accel / Mag staleness */}
-        <div style={d.row}>
-          <span style={d.key}>Since Good Accel</span>
-          <span style={{ ...d.val, color: tAccel > 3 ? '#ef4444' : '#e2b96f' }}>
-            {diag ? `${tAccel}s` : '—'}
-          </span>
-        </div>
-        <div style={d.row}>
-          <span style={d.key}>Since Good Mag</span>
-          <span style={{ ...d.val, color: tMag > 3 ? '#f59e0b' : '#e2b96f' }}>
-            {diag ? `${tMag}s` : '—'}
-          </span>
-        </div>
+          );
+        })}
       </div>
+
+      {diag && (
+        <div style={{ ...d.card, marginTop: 4 }}>
+          <div style={d.cardTitle}>Global State</div>
+          {diag.currentState !== undefined ? (
+            <>
+              <div style={d.row}>
+                <span style={d.key}>System State</span>
+                <span style={{ ...d.val, color: '#60a5fa', fontWeight: 'bold' }}>
+                  {STATE_LABELS[diag.currentState] || `UNKNOWN (${diag.currentState})`}
+                </span>
+              </div>
+              <div style={d.row}>
+                <span style={d.key}>Phone Yaw Anchor</span>
+                <span style={d.val}>{diag.phoneYawCorrection ? (diag.phoneYawCorrection * 180 / Math.PI).toFixed(1) + '°' : 'Not Set'}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Fallback for old 90-byte packet diagnostics */}
+              <div style={d.row}>
+                <span style={d.key}>Mag Stability</span>
+                <span style={d.val}>{diag.magStability ? Math.round(diag.magStability * 100) + '%' : '—'}</span>
+              </div>
+              <div style={d.row}>
+                <span style={d.key}>Drift Exposure</span>
+                <span style={{ ...d.val, color: diag.driftExposure > 5 ? '#f59e0b' : '#e2b96f' }}>{diag.driftExposure ? diag.driftExposure.toFixed(1) + 's' : '—'}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -853,7 +1047,7 @@ function CouplingCalibrationUI({
     setBaselines(null);
   }, [couplingFinger]);
 
-  const [chYaw, chP1, chP2] = CAL_FINGER_DEFAULTS[couplingFinger];
+  const [chYaw, chP1, chP2, chIP] = CAL_FINGER_DEFAULTS[couplingFinger];
 
   const captureBaseline = async () => {
     if (chP1 === -1 || chP2 === -1) { setCalError('Sensors not available'); return; }
@@ -863,7 +1057,8 @@ function CouplingCalibrationUI({
       setBaselines({
         yaw: medians[chYaw] ?? 0,
         p1: medians[chP1],
-        p2: medians[chP2]
+        p2: medians[chP2],
+        ip: chIP !== -1 ? medians[chIP] : 0
       });
       setStep('pose1');
     } catch (e) {
@@ -877,9 +1072,9 @@ function CouplingCalibrationUI({
     setIsCapturing(true);
     try {
       const medians = await takeMedianSamples(800);
-      const vYaw = medians[chYaw] ?? 0;
       const vP1 = medians[chP1];
       const vP2 = medians[chP2];
+      const vIP = chIP !== -1 ? medians[chIP] : 0;
 
       setCouplingByFinger(prev => {
         const next = prev.map(f => [...f]);
@@ -891,9 +1086,17 @@ function CouplingCalibrationUI({
         } else if (poseName === 'pose2') {
           coeffs[1] = vP1 - baselines.p1;
           coeffs[2] = vP2 - baselines.p2;
+          if (chIP !== -1) coeffs[5] = vIP - baselines.ip;
           setStep('pose3');
         } else if (poseName === 'pose3') {
           coeffs[3] = vP2 - baselines.p2;
+          if (chIP !== -1) {
+            setStep('pose4');
+          } else {
+            setStep('done');
+          }
+        } else if (poseName === 'pose4') {
+          coeffs[4] = vP1 - baselines.p1;
           setStep('done');
         }
         return next;
@@ -961,6 +1164,14 @@ function CouplingCalibrationUI({
             </button>
           </div>
         )}
+        {step === 'pose4' && (
+          <div>
+            <p style={{ fontSize: 11, color: '#a0aec0', marginTop: 0 }}>Step 5 (Thumb Only): <b>Bend ONLY the IP Joint</b> fully. Keep Yaw, P1, and P2 relaxed.</p>
+            <button onClick={() => capturePose('pose4')} disabled={isCapturing} style={{ padding: '6px 12px', borderRadius: 6, background: '#60a5fa', color: '#000', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 'bold' }}>
+              {isCapturing ? 'Capturing...' : 'Capture Pose 4'}
+            </button>
+          </div>
+        )}
         {step === 'done' && (
           <div>
             <p style={{ fontSize: 11, color: '#34d399', marginTop: 0 }}>Capture complete! Review coefficients below and click Apply.</p>
@@ -972,7 +1183,7 @@ function CouplingCalibrationUI({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-        {COUPLING_LABELS.map((lbl, i) => (
+        {(couplingFinger === 4 ? COUPLING_LABELS_THUMB : COUPLING_LABELS_STANDARD).map((lbl, i) => (
           <div key={lbl}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 11, color: '#a0aec0' }}>{lbl}</span>
@@ -1002,9 +1213,9 @@ function CouplingCalibrationUI({
 
 
 // ─── Tiny reusable 3-D scene wrapper ─────────────────────────────────────────
-function Scene({ rigData, restRotationR, restRotationL, wristLimits, fingerLimits }) {
+function Scene({ rigData, restRotationR, restRotationL, wristLimits, fingerLimits, onRestPosesLoaded }) {
   return (
-    <Canvas camera={{ position: [0, 0, 1], fov: 50 }} style={{ width: '100%', height: '100%' }}>
+    <Canvas camera={{ position: [0, 0.4, 1.9], fov: 40 }} style={{ width: '100%', height: '100%' }}>
       <ambientLight intensity={1.8} />
       <directionalLight position={[5, 10, 5]} intensity={2.5} />
       <pointLight position={[-5, 5, -3]} intensity={0.6} />
@@ -1015,6 +1226,7 @@ function Scene({ rigData, restRotationR, restRotationL, wristLimits, fingerLimit
         restRotationL={restRotationL}
         wristLimits={wristLimits}
         fingerLimits={fingerLimits}
+        onRestPosesLoaded={onRestPosesLoaded}
       />
     </Canvas>
   );
@@ -1161,7 +1373,20 @@ function RecordingModal({
 export default function GloveCapture() {
   const router = useRouter();
 
-  const ESP_IP = "192.168.1.8";
+  const [espIp, setEspIp] = useState("192.168.1.8");
+  const [ipInput, setIpInput] = useState("192.168.1.8");
+
+  useEffect(() => {
+    const saved = localStorage.getItem('espIp');
+    const defaultIp = saved || process.env.NEXT_PUBLIC_ESP_IP || '192.168.1.8';
+    setEspIp(defaultIp);
+    setIpInput(defaultIp);
+  }, []);
+
+  const handleApplyIp = () => {
+    setEspIp(ipInput);
+    localStorage.setItem('espIp', ipInput);
+  };
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -1199,7 +1424,7 @@ export default function GloveCapture() {
       if (frame?.source === 'raw_dual') {
         voltages = calHandRef.current === 'left' ? frame.leftVoltages : frame.rightVoltages;
       }
-      
+
       setRawVoltages(voltages);
       // Track per-channel variance for 30s dead-sensor detection
       const now = Date.now();
@@ -1236,7 +1461,7 @@ export default function GloveCapture() {
     setRecordedFrames(prev => [...prev, frame]);
   }, []);
 
-  const gloveFrame = useGloveWebSocket(ESP_IP, handleFrame);
+  const gloveFrame = useGloveWebSocket(espIp, handleFrame);
 
   const currentFrame = useMemo(() => {
     if (!gloveFrame?.imuQuat && !gloveFrame?.fingerAnglesFlat) return null;
@@ -1245,7 +1470,7 @@ export default function GloveCapture() {
       fingerAngles: gloveFrame.fingerAngles,
       thumbExtra: gloveFrame.thumbExtra,
       calStatus: gloveFrame.calStatus ?? 0,
-      
+
       leftFingers: gloveFrame.leftFingerAnglesFlat,
       leftFingerAngles: gloveFrame.leftFingerAngles,
       leftThumbExtra: gloveFrame.leftThumbExtra,
@@ -1258,7 +1483,215 @@ export default function GloveCapture() {
     };
   }, [gloveFrame]);
 
-  const rigFrame = useMemo(() => buildRigData(currentFrame), [currentFrame]);
+  const [modelAlign, setModelAlign] = useState({
+    upper: [0, 0, 0],
+    forearm: [0, 0, 0],
+    hand: [0, 0, 0]
+  });
+
+  const mountCorrRef = useRef({
+    upper: new THREE.Quaternion(),
+    forearmL: new THREE.Quaternion(),
+    forearmR: new THREE.Quaternion(),
+    handL: new THREE.Quaternion(),
+    handR: new THREE.Quaternion()
+  });
+
+  const restPosesRef = useRef(null);
+  const tareUpperRef = useRef(new THREE.Quaternion());
+  const modelAlignRef = useRef(modelAlign);
+  useEffect(() => { modelAlignRef.current = modelAlign; }, [modelAlign]);
+
+  const currentFrameRef = useRef(currentFrame);
+  useEffect(() => { currentFrameRef.current = currentFrame; }, [currentFrame]);
+
+  const [isCalibrated, setIsCalibrated] = useState(false);
+
+  const calibrateMountOffsets = useCallback(() => {
+    const frame = currentFrameRef.current;
+    if (!frame?.imuQuat?.upperArm || !restPosesRef.current || !restPosesRef.current.right) {
+      console.warn("Cannot calibrate: missing IMU data or rest poses");
+      return;
+    }
+    const { upperArm, forearm, hand } = frame.imuQuat;
+
+    const hwUpperWorld = ConvertToThreeSpace(new THREE.Quaternion().fromArray(upperArm));
+    const hwForearmLocal = ConvertToThreeSpace(new THREE.Quaternion().fromArray(forearm));
+    const hwHandLocal = ConvertToThreeSpace(new THREE.Quaternion().fromArray(hand));
+
+    const mAlignUp = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      (parseFloat(modelAlignRef.current.upper[0]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.upper[1]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.upper[2]) || 0) * DEG2RAD, 'XYZ'));
+    const mAlignFo = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      (parseFloat(modelAlignRef.current.forearm[0]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.forearm[1]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.forearm[2]) || 0) * DEG2RAD, 'XYZ'));
+    const mAlignHa = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      (parseFloat(modelAlignRef.current.hand[0]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.hand[1]) || 0) * DEG2RAD,
+      (parseFloat(modelAlignRef.current.hand[2]) || 0) * DEG2RAD, 'XYZ'));
+
+    const { upper: upperRestPose, forearm: forearmRestPose, hand: handRestPose } = restPosesRef.current.right;
+
+    // 1. Upper Arm
+    const alignedUpper_old = hwUpperWorld.clone().multiply(mAlignUp);
+    const delta = alignedUpper_old.clone().multiply(upperRestPose.clone().invert());
+
+    const deltaEuler = new THREE.Euler().setFromQuaternion(delta, 'YXZ');
+    const headingYaw = deltaEuler.y;
+
+    const qHeading = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, headingYaw, 0, 'XYZ'));
+    const Q_bone_ideal = qHeading.clone().multiply(upperRestPose);
+
+    const upperMountCorr = hwUpperWorld.clone().invert().multiply(Q_bone_ideal).multiply(mAlignUp.clone().invert());
+
+    // 2. Forearm
+    const forearmMountL = upperMountCorr.clone().invert();
+
+    const forearmMountR = hwForearmLocal.clone().invert()
+      .multiply(upperMountCorr).multiply(mAlignUp)
+      .multiply(forearmRestPose)
+      .multiply(mAlignFo.clone().invert());
+
+    // 3. Hand
+    const handMountL = forearmMountR.clone().invert();
+
+    const handMountR = hwHandLocal.clone().invert()
+      .multiply(forearmMountR).multiply(mAlignFo)
+      .multiply(handRestPose)
+      .multiply(mAlignHa.clone().invert());
+
+    mountCorrRef.current = {
+      upper: upperMountCorr,
+      forearmL: forearmMountL,
+      forearmR: forearmMountR,
+      handL: handMountL,
+      handR: handMountR
+    };
+
+    // Auto-tare heading after calibration
+    const calAlignedUpper = hwUpperWorld.clone().multiply(upperMountCorr).multiply(mAlignUp);
+    const calAlignedEuler = new THREE.Euler().setFromQuaternion(calAlignedUpper, 'YXZ');
+    tareUpperRef.current = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, calAlignedEuler.y, 0, 'XYZ'));
+
+    setIsCalibrated(true);
+    console.log("Mount calibration complete!");
+  }, []);
+
+  const tareHeading = useCallback(() => {
+    const frame = currentFrameRef.current;
+    if (!frame?.imuQuat?.upperArm) return;
+
+    const { upperArm } = frame.imuQuat;
+    const hwUp = ConvertToThreeSpace(new THREE.Quaternion().fromArray(upperArm));
+    const mUp = new THREE.Quaternion().setFromEuler(new THREE.Euler((parseFloat(modelAlignRef.current.upper[0]) || 0) * DEG2RAD, (parseFloat(modelAlignRef.current.upper[1]) || 0) * DEG2RAD, (parseFloat(modelAlignRef.current.upper[2]) || 0) * DEG2RAD, 'XYZ'));
+
+    const alUp = hwUp.clone().multiply(mountCorrRef.current.upper).multiply(mUp);
+    const euler = new THREE.Euler().setFromQuaternion(alUp, 'YXZ');
+    tareUpperRef.current = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, euler.y, 0, 'XYZ'));
+    console.log("Heading tared.");
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.matches('input, textarea')) return;
+      if (e.key.toLowerCase() === 'c') {
+        calibrateMountOffsets();
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        tareHeading();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [calibrateMountOffsets, tareHeading]);
+
+  // ─── Manual pose states (Must be before rigFrame) ───
+  const [manualFingersEnable, setManualFingersEnable] = useState(false);
+  const [manualArmsEnable, setManualArmsEnable] = useState(false);
+  const [manualFingers, setManualFingers] = useState(() => (
+    Array.from({ length: 5 }, () => ({ yaw: 0, pitch1: 0, pitch2: 0 }))
+  )); // order: [Pinky, Ring, Middle, Index, Thumb]
+  const [manualThumbExtra, setManualThumbExtra] = useState(0);
+  // Arm joints manual sliders in degrees [X, Y, Z]
+  const [manualRightArm, setManualRightArm] = useState({
+    upperArm: [-3, 0, 2],
+    forearm: [92, -70, -1],
+    hand: [0, 0, 0]
+  });
+  const [manualLeftArm, setManualLeftArm] = useState({
+    upperArm: [1, -5, -4],
+    forearm: [90, 73, 0],
+    hand: [17, 0, 0]
+  });
+
+  const rigFrame = useMemo(() => {
+    const frameData = { ...currentFrame };
+    if (manualFingersEnable) {
+      frameData.fingerAngles = manualFingers;
+      frameData.thumbExtra = manualThumbExtra;
+      frameData.calStatus = CAL_ALL_FINGERS;
+      frameData.leftFingerAngles = manualFingers;
+      frameData.leftThumbExtra = manualThumbExtra;
+      frameData.leftCalStatus = CAL_ALL_FINGERS;
+    }
+
+    const rig = buildRigData(frameData);
+    if (!rig) return null;
+
+    const defaultPalmR = {
+      upperArm: quatFromEuler(...manualRightArm.upperArm.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0))),
+      forearm: quatFromEuler(...manualRightArm.forearm.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0))),
+      hand: quatFromEuler(...manualRightArm.hand.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0)))
+    };
+    const defaultPalmL = {
+      upperArm: quatFromEuler(...manualLeftArm.upperArm.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0))),
+      forearm: quatFromEuler(...manualLeftArm.forearm.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0))),
+      hand: quatFromEuler(...manualLeftArm.hand.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0)))
+    };
+
+    if (manualArmsEnable) {
+      rig.right.palm = defaultPalmR;
+      rig.left.palm = defaultPalmL;
+      return rig;
+    }
+
+    if (!isCalibrated || !currentFrame?.imuQuat?.upperArm) {
+      rig.right.palm = defaultPalmR;
+      rig.left.palm = defaultPalmL;
+      return rig;
+    }
+
+    const { upperArm, forearm, hand } = currentFrame.imuQuat;
+    const hwUp = ConvertToThreeSpace(new THREE.Quaternion().fromArray(upperArm));
+    const hwFo = ConvertToThreeSpace(new THREE.Quaternion().fromArray(forearm));
+    const hwHa = ConvertToThreeSpace(new THREE.Quaternion().fromArray(hand));
+
+    const mUp = new THREE.Quaternion().setFromEuler(new THREE.Euler((parseFloat(modelAlign.upper[0]) || 0) * DEG2RAD, (parseFloat(modelAlign.upper[1]) || 0) * DEG2RAD, (parseFloat(modelAlign.upper[2]) || 0) * DEG2RAD, 'XYZ'));
+    const mFo = new THREE.Quaternion().setFromEuler(new THREE.Euler((parseFloat(modelAlign.forearm[0]) || 0) * DEG2RAD, (parseFloat(modelAlign.forearm[1]) || 0) * DEG2RAD, (parseFloat(modelAlign.forearm[2]) || 0) * DEG2RAD, 'XYZ'));
+    const mHa = new THREE.Quaternion().setFromEuler(new THREE.Euler((parseFloat(modelAlign.hand[0]) || 0) * DEG2RAD, (parseFloat(modelAlign.hand[1]) || 0) * DEG2RAD, (parseFloat(modelAlign.hand[2]) || 0) * DEG2RAD, 'XYZ'));
+
+    const mc = mountCorrRef.current;
+
+    const upInv = mUp.clone().invert();
+    const foInv = mFo.clone().invert();
+
+    const alUp = hwUp.clone().multiply(mc.upper).multiply(mUp);
+    const alFo = upInv.clone().multiply(mc.forearmL).multiply(hwFo).multiply(mc.forearmR).multiply(mFo);
+    const alHa = foInv.clone().multiply(mc.handL).multiply(hwHa).multiply(mc.handR).multiply(mHa);
+
+    const finalUp = tareUpperRef.current.clone().invert().multiply(alUp);
+
+    rig.right.palm = {
+      isAligned: true,
+      upperArm: [finalUp.x, finalUp.y, finalUp.z, finalUp.w],
+      forearm: [alFo.x, alFo.y, alFo.z, alFo.w],
+      hand: [alHa.x, alHa.y, alHa.z, alHa.w]
+    };
+    rig.left.palm = defaultPalmL;
+    return rig;
+  }, [currentFrame, modelAlign, isCalibrated, manualFingersEnable, manualArmsEnable, manualFingers, manualThumbExtra, manualRightArm, manualLeftArm]);
 
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -1267,6 +1700,9 @@ export default function GloveCapture() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
   // Calibration ref – set to true to trigger reset inside HandModel
   const calibrateRef = useRef(false);
+
+  // Main Tab State
+  const [mainTab, setMainTab] = useState('exo');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -1278,31 +1714,7 @@ export default function GloveCapture() {
   const [restRotationL, setRestRotationL] = useState([-0.99, -3.15, -3.15]);
   const [tunerOpen, setTunerOpen] = useState(true);
 
-  // Manual pose sliders for offline testing (DEV only)
-  const [manualEnable, setManualEnable] = useState(false);
-  const [manualFingers, setManualFingers] = useState(() => (
-    Array.from({ length: 5 }, () => ({ yaw: 0, pitch1: 0, pitch2: 0 }))
-  )); // order: [Pinky, Ring, Middle, Index, Thumb]
-  const [manualThumbExtra, setManualThumbExtra] = useState(0);
-  // Wrist Euler sliders in degrees [X, Y, Z]
-  const [manualWristEuler, setManualWristEuler] = useState([0, 0, 0]);
 
-  // When manual testing enabled, synthesize a frame from manual sliders
-  const rigFrameWithManual = useMemo(() => {
-    //console.log(currentFrame?.fingers)
-    if (!manualEnable) return buildRigData(currentFrame);
-    console.log("Manual mode")
-    // convert wrist Euler degrees to quaternion array [x,y,z,w]
-    const rad = manualWristEuler.map(d => (Number.isFinite(d) ? d * DEG2RAD : 0));
-    const imuQuat = quatFromEuler(rad[0], rad[1], rad[2]);
-    const frame = {
-      fingerAngles: manualFingers,
-      thumbExtra: manualThumbExtra,
-      calStatus: CAL_ALL_FINGERS,
-      imuQuat,
-    };
-    return buildRigData(frame);
-  }, [manualEnable, manualFingers, manualThumbExtra, manualWristEuler, currentFrame]);
 
   // Biomechanical constraint limits
   const [wristLimits, setWristLimits] = useState({ ...DEFAULT_WRIST_LIMITS });
@@ -1312,6 +1724,10 @@ export default function GloveCapture() {
 
   const [calibrationOpen, setCalibrationOpen] = useState(false);
   const [calError, setCalError] = useState(null);
+  const [couplingByFinger, setCouplingByFinger] = useState(() =>
+    Array.from({ length: 5 }, (_, fi) => fi === 4 ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0])
+  );
+  const [couplingInput, setCouplingInput] = useState('0,0,0,0');
   const [rawVoltages, setRawVoltages] = useState(() => Array(16).fill(null));
   const [sampleCount, setSampleCount] = useState(DEFAULT_SAMPLE_COUNT);
   const [sampleDelayMs, setSampleDelayMs] = useState(DEFAULT_SAMPLE_DELAY_MS);
@@ -1326,11 +1742,18 @@ export default function GloveCapture() {
   const calHandRef = useRef('right');
   useEffect(() => { calHandRef.current = calHand; }, [calHand]);
 
-  // New: coupling sliders (5 fingers × 6 coefficients)
-  const [couplingByFinger, setCouplingByFinger] = useState(() =>
-    Array.from({ length: 5 }, () => [0, 0, 0, 0, 0, 0])
-  );
-  const [couplingInput, setCouplingInput] = useState('0,0,0,0');
+  // Load offline arm pose from local storage
+  useEffect(() => {
+    try {
+      const savedRight = localStorage.getItem('esl_glove_offline_right');
+      const savedLeft = localStorage.getItem('esl_glove_offline_left');
+      if (savedRight) setManualRightArm(JSON.parse(savedRight));
+      if (savedLeft) setManualLeftArm(JSON.parse(savedLeft));
+    } catch (e) {
+      console.warn('Could not parse offline arm pose from localStorage');
+    }
+  }, []);
+
   // New: knot sanity warnings
   const [sanityWarnings, setSanityWarnings] = useState([]);
   // New: NVS load banner
@@ -1339,6 +1762,7 @@ export default function GloveCapture() {
   const [couplingFinger, setCouplingFinger] = useState(0);
   // New: calibration panel active tab
   const [calTab, setCalTab] = useState('voltages'); // 'voltages' | 'knots' | 'coupling' | 'manage'
+  const [calMainTab, setCalMainTab] = useState('exo'); // 'exo' | 'imu'
 
   // Dynamic calibration state
   const [dynCalRecording, setDynCalRecording] = useState(false);
@@ -1403,7 +1827,8 @@ export default function GloveCapture() {
         medians[ch] = null;
       } else {
         const mid = Math.floor(chValues.length / 2);
-        medians[ch] = chValues.length % 2 !== 0 ? chValues[mid] : (chValues[mid - 1] + chValues[mid]) / 2;
+        const midVal = chValues.length % 2 !== 0 ? chValues[mid] : (chValues[mid - 1] + chValues[mid]) / 2;
+        medians[ch] = midVal;
       }
     }
     return medians;
@@ -1424,6 +1849,14 @@ export default function GloveCapture() {
       setCalError(err?.message || 'Command failed');
     }
   }, [sendCommandUnified]);
+
+  const [magEnabled, setMagEnabled] = useState(true);
+
+  const toggleMagUsage = useCallback(async () => {
+    const newState = !magEnabled;
+    setMagEnabled(newState);
+    await runCommand(CMD.SET_MAG_USAGE, new Uint8Array([newState ? 1 : 0]));
+  }, [magEnabled, runCommand]);
 
   const requestRawVoltages = useCallback(async () => {
     await sendCommandUnified(CMD.REQUEST_RAW);
@@ -1525,10 +1958,11 @@ export default function GloveCapture() {
   // Legacy text-input coupling send (kept for DEV backward compat)
   const sendCoupling = useCallback(async () => {
     const parts = couplingInput.split(',').map(val => parseFloat(val.trim())).filter(val => Number.isFinite(val));
-    if (parts.length < 4) { setCalError('Provide 4 comma-separated coupling values.'); return; }
+    const expectedLen = calFinger === 4 ? 6 : 4;
+    if (parts.length < expectedLen) { setCalError(`Provide ${expectedLen} comma-separated coupling values.`); return; }
     try {
       setCalError(null);
-      const payload = buildCouplingPayload(calFinger, parts.slice(0, 4));
+      const payload = buildCouplingPayload(calFinger, parts.slice(0, expectedLen));
       await sendCommandUnified(CMD.SET_COUPLING, payload);
     } catch (err) {
       setCalError(err?.message || 'Failed to send coupling');
@@ -1578,7 +2012,7 @@ export default function GloveCapture() {
           return Array.isArray(k) ? k.map(v => (typeof v === 'number' ? v : null)) : Array(5).fill(null);
         })
       );
-      const newCoupling = Array.from({ length: 5 }, (_, fi) => cal.fingers[fi]?.coupling ?? [0, 0, 0, 0]);
+      const newCoupling = Array.from({ length: 5 }, (_, fi) => cal.fingers[fi]?.coupling ?? (fi === 4 ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0]));
       setKnotsByAxis(newKnots);
       setCouplingByFinger(newCoupling);
       // Send to device
@@ -1946,11 +2380,12 @@ export default function GloveCapture() {
           <div style={s.viewport}>
             <div style={s.viewportLabel}>LIVE PREVIEW</div>
             <Scene
-              rigData={rigFrameWithManual}
+              rigData={rigFrame}
               restRotationR={restRotationR}
               restRotationL={restRotationL}
               wristLimits={wristLimits}
               fingerLimits={fingerLimits}
+              onRestPosesLoaded={(poses) => { restPosesRef.current = poses; }}
             />
             {!currentFrame && (
               <div style={s.viewportOverlay}>
@@ -1999,313 +2434,474 @@ export default function GloveCapture() {
         {/* ── RIGHT COL ── */}
         <div style={s.rightCol}>
 
-          {/* Sign recorder panel */}
-          <div style={s.panel}>
-            <div style={s.panelHeader}>
-              <h3 style={s.panelTitle}>Record a Sign</h3>
-              <p style={s.panelSub}>Type the label, then start recording</p>
-            </div>
-
-            <div style={s.fieldGroup}>
-              <label style={s.label}>Sign label</label>
-              <input
-                type="text"
-                placeholder='e.g. "hello"'
-                value={signInput}
-                onChange={e => setSignInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleStartRecording()}
-                style={s.input}
-                onFocus={e => Object.assign(e.target.style, s.inputFocus)}
-                onBlur={e => Object.assign(e.target.style, { borderColor: 'rgba(255,255,255,0.10)', boxShadow: 'none' })}
-              />
-            </div>
-
+          {/* Main Tab Switcher */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
             <button
-              className="start-btn"
-              style={{ ...s.startBtn, opacity: signInput.trim() ? 1 : 0.45 }}
-              onClick={handleStartRecording}
-              disabled={!signInput.trim()}
+              onClick={() => setMainTab('exo')}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                background: mainTab === 'exo' ? 'rgba(226,185,111,0.15)' : 'rgba(255,255,255,0.04)',
+                color: mainTab === 'exo' ? '#e2b96f' : '#718096',
+                border: `1px solid ${mainTab === 'exo' ? 'rgba(226,185,111,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                transition: 'all 0.2s'
+              }}
             >
-              <span style={{ fontSize: 10 }}>●</span> Start Recording
+              🦾 Exoskeleton Data
+            </button>
+            <button
+              onClick={() => setMainTab('imu')}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                background: mainTab === 'imu' ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.04)',
+                color: mainTab === 'imu' ? '#60a5fa' : '#718096',
+                border: `1px solid ${mainTab === 'imu' ? 'rgba(96,165,250,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                transition: 'all 0.2s'
+              }}
+            >
+              📡 IMU Data
+            </button>
+            <button
+              onClick={() => setMainTab('cal')}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                background: mainTab === 'cal' ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.04)',
+                color: mainTab === 'cal' ? '#34d399' : '#718096',
+                border: `1px solid ${mainTab === 'cal' ? 'rgba(52,211,153,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                transition: 'all 0.2s'
+              }}
+            >
+              ⚙ Calibration
             </button>
           </div>
 
-
-          {calibrationOpen && (
-            <div style={s.panel}>
-              <div style={s.panelHeader}>
-                <h3 style={s.panelTitle}>⚙ Calibration</h3>
-                <p style={s.panelSub}>Guide the glove through its full calibration workflow</p>
-              </div>
-
-              {calError && <div style={s.calError}>{calError}</div>}
-
-              {/* NVS load banner */}
-              {nvsBannerVisible && (
-                <div style={{ padding: '10px 12px', marginBottom: 12, background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 10, fontSize: 11, color: '#60a5fa' }}>
-                  ℹ Calibration loaded from device — voltage knots are not shown here (firmware does not send readback). Angle outputs will be correct.
+          {mainTab === 'exo' && (
+            <>
+              {/* Sign recorder panel */}
+              <div style={s.panel}>
+                <div style={s.panelHeader}>
+                  <h3 style={s.panelTitle}>Record a Sign</h3>
+                  <p style={s.panelSub}>Type the label, then start recording</p>
                 </div>
-              )}
 
-              {/* Cal Status inline */}
-              <CalStatusStrip calStatus={calHand === 'left' ? (currentFrame?.leftCalStatus ?? 0) : (currentFrame?.calStatus ?? 0)} knotsByAxis={knotsByAxis} />
-
-              {/* Hand Toggle */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 8, background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                {['right', 'left'].map(hand => (
-                  <button
-                    key={hand}
-                    onClick={() => setCalHand(hand)}
-                    style={{
-                      flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                      background: calHand === hand ? '#60a5fa' : 'transparent',
-                      color: calHand === hand ? '#000' : '#a0aec0',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {hand} Hand
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab navigation */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 14, marginBottom: 2, borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 0 }}>
-                {[['voltages', 'Voltages'], ['knots', 'Knot Wizard'], ['coupling', 'Coupling'], ['manage', 'Manage']].map(([tab, label]) => (
-                  <button key={tab} onClick={() => setCalTab(tab)}
-                    style={{
-                      padding: '7px 12px', fontSize: 11, fontWeight: 600, borderRadius: '8px 8px 0 0', cursor: 'pointer', border: 'none', fontFamily: "'DM Sans', sans-serif",
-                      background: calTab === tab ? 'rgba(226,185,111,0.12)' : 'transparent',
-                      color: calTab === tab ? '#e2b96f' : '#718096',
-                      borderBottom: calTab === tab ? '2px solid #e2b96f' : '2px solid transparent',
-                    }}>{label}</button>
-                ))}
-              </div>
-
-              {/* ── TAB: VOLTAGES ── */}
-              {calTab === 'voltages' && (
-                <div style={{ marginTop: 12 }}>
-                  <LiveVoltageMonitor voltages={rawVoltages} sensorHealth={sensorHealth} />
+                <div style={s.fieldGroup}>
+                  <label style={s.label}>Sign label</label>
+                  <input
+                    type="text"
+                    placeholder='e.g. "hello"'
+                    value={signInput}
+                    onChange={e => setSignInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleStartRecording()}
+                    style={s.input}
+                    onFocus={e => Object.assign(e.target.style, s.inputFocus)}
+                    onBlur={e => Object.assign(e.target.style, { borderColor: 'rgba(255,255,255,0.10)', boxShadow: 'none' })}
+                  />
                 </div>
-              )}
 
-              {/* ── TAB: KNOT WIZARD ── */}
-              {calTab === 'knots' && (
-                <div style={{ marginTop: 12 }}>
-                  {/* Dynamic Global Cal */}
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>⚡ Dynamic Calibration (all fingers at once)</div>
-                    <p style={s.calHint}>Open and close your hand slowly — spread and curl all fingers. System records all 16 sensors simultaneously.</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      <label style={s.calLabel}>Duration (s)</label>
-                      <input type="number" min="3" max="30" step="1"
-                        style={{ ...s.calInput, width: 60 }} value={dynCalDuration}
-                        onChange={e => setDynCalDuration(Math.max(3, parseInt(e.target.value, 10) || 8))}
-                        disabled={dynCalRecording} />
-                    </div>
-                    <button style={{
-                      ...s.calBtn, width: '100%', padding: '10px', fontSize: 13,
-                      background: dynCalRecording ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)',
-                      color: dynCalRecording ? '#ef4444' : '#34d399',
-                      borderColor: dynCalRecording ? 'rgba(239,68,68,0.30)' : 'rgba(52,211,153,0.30)'
-                    }}
-                      onClick={startDynamicCal} disabled={!isConnected || dynCalRecording || captureBusy}>
-                      {dynCalRecording ? `Recording… ${dynCalCountdown}s remaining` : 'Start Dynamic Calibration'}
-                    </button>
+                <button
+                  className="start-btn"
+                  style={{ ...s.startBtn, opacity: signInput.trim() ? 1 : 0.45 }}
+                  onClick={handleStartRecording}
+                  disabled={!signInput.trim()}
+                >
+                  <span style={{ fontSize: 10 }}>●</span> Start Recording
+                </button>
+              </div>
+            </>
+          )}
+
+          {mainTab === 'cal' && (
+            <>
+              {/* Cal Main Tabs */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <button
+                  onClick={() => setCalMainTab('exo')}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                    background: calMainTab === 'exo' ? 'rgba(226,185,111,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: calMainTab === 'exo' ? '#e2b96f' : '#718096',
+                  }}
+                >🦾 Exoskeleton Calibration</button>
+                <button
+                  onClick={() => setCalMainTab('imu')}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                    background: calMainTab === 'imu' ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: calMainTab === 'imu' ? '#60a5fa' : '#718096',
+                  }}
+                >📡 IMU Calibration</button>
+              </div>
+
+              {calMainTab === 'exo' && (
+                <div style={s.panel}>
+                  <div style={s.panelHeader}>
+                    <h3 style={s.panelTitle}>⚙ Exoskeleton Calibration</h3>
+                    <p style={s.panelSub}>Guide the glove through its full calibration workflow</p>
                   </div>
 
-                  {/* Step-by-step Wizard */}
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>Step-by-Step Axis Wizard</div>
-                    <div style={s.calRow}>
-                      <label style={s.calLabel}>Finger</label>
-                      <select style={s.calSelect} value={calFinger} onChange={e => { setCalFinger(parseInt(e.target.value, 10)); setSanityWarnings([]); }}>
-                        {CAL_FINGER_NAMES.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
-                      </select>
-                      <label style={s.calLabel}>Axis</label>
-                      <select style={s.calSelect} value={calAxis} onChange={e => { setCalAxis(parseInt(e.target.value, 10)); setSanityWarnings([]); }}>
-                        {CAL_AXIS_NAMES.map((name, idx) => (
-                          <option key={name} value={idx} disabled={CAL_FINGER_DEFAULTS[calFinger][idx] === -1}>{name}</option>
-                        ))}
-                      </select>
+                  {calError && <div style={s.calError}>{calError}</div>}
+
+                  {/* NVS load banner */}
+                  {nvsBannerVisible && (
+                    <div style={{ padding: '10px 12px', marginBottom: 12, background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 10, fontSize: 11, color: '#60a5fa' }}>
+                      ℹ Calibration loaded from device — voltage knots are not shown here (firmware does not send readback). Angle outputs will be correct.
                     </div>
-                    {/* Live voltage for this axis */}
-                    {axisAvailable && (() => {
-                      const sensorIdx = CAL_FINGER_DEFAULTS[calFinger][calAxis];
-                      const liveV = rawVoltages[sensorIdx];
-                      return (
-                        <div style={{ marginBottom: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: '#718096' }}>ch{sensorIdx} live voltage:</span>
-                          <span style={{ color: voltageToColor(liveV), fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                            {Number.isFinite(liveV) ? `${liveV.toFixed(3)} V` : '---'}
-                          </span>
+                  )}
+
+                  {/* Cal Status inline */}
+                  <CalStatusStrip calStatus={calHand === 'left' ? (currentFrame?.leftCalStatus ?? 0) : (currentFrame?.calStatus ?? 0)} knotsByAxis={knotsByAxis} />
+
+                  {/* Hand Toggle */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 8, background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    {['right', 'left'].map(hand => (
+                      <button
+                        key={hand}
+                        onClick={() => setCalHand(hand)}
+                        style={{
+                          flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                          background: calHand === hand ? '#60a5fa' : 'transparent',
+                          color: calHand === hand ? '#000' : '#a0aec0',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {hand} Hand
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tab navigation */}
+                  <div style={{ display: 'flex', gap: 4, marginTop: 14, marginBottom: 2, borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 0 }}>
+                    {[['voltages', 'Voltages'], ['knots', 'Knot Wizard'], ['coupling', 'Coupling'], ['manage', 'Manage']].map(([tab, label]) => (
+                      <button key={tab} onClick={() => setCalTab(tab)}
+                        style={{
+                          padding: '7px 12px', fontSize: 11, fontWeight: 600, borderRadius: '8px 8px 0 0', cursor: 'pointer', border: 'none', fontFamily: "'DM Sans', sans-serif",
+                          background: calTab === tab ? 'rgba(226,185,111,0.12)' : 'transparent',
+                          color: calTab === tab ? '#e2b96f' : '#718096',
+                          borderBottom: calTab === tab ? '2px solid #e2b96f' : '2px solid transparent',
+                        }}>{label}</button>
+                    ))}
+                  </div>
+
+                  {/* ── TAB: VOLTAGES ── */}
+                  {calTab === 'voltages' && (
+                    <div style={{ marginTop: 12 }}>
+                      <LiveVoltageMonitor voltages={rawVoltages} sensorHealth={sensorHealth} />
+                    </div>
+                  )}
+
+                  {/* ── TAB: KNOT WIZARD ── */}
+                  {calTab === 'knots' && (
+                    <div style={{ marginTop: 12 }}>
+                      {/* Dynamic Global Cal */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>⚡ Dynamic Calibration (all fingers at once)</div>
+                        <p style={s.calHint}>Open and close your hand slowly — spread and curl all fingers. System records all 16 sensors simultaneously.</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <label style={s.calLabel}>Duration (s)</label>
+                          <input type="number" min="3" max="30" step="1"
+                            style={{ ...s.calInput, width: 60 }} value={dynCalDuration}
+                            onChange={e => setDynCalDuration(Math.max(3, parseInt(e.target.value, 10) || 8))}
+                            disabled={dynCalRecording} />
                         </div>
-                      );
-                    })()}
-                    {/* Sanity warnings */}
-                    {sanityWarnings.length > 0 && (
-                      <div style={{ marginBottom: 10, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10 }}>
-                        {sanityWarnings.map((w, i) => <div key={i} style={{ fontSize: 11, color: w.startsWith('ℹ') ? '#60a5fa' : '#ef4444', marginBottom: i < sanityWarnings.length - 1 ? 4 : 0 }}>{w}</div>)}
+                        <button style={{
+                          ...s.calBtn, width: '100%', padding: '10px', fontSize: 13,
+                          background: dynCalRecording ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)',
+                          color: dynCalRecording ? '#ef4444' : '#34d399',
+                          borderColor: dynCalRecording ? 'rgba(239,68,68,0.30)' : 'rgba(52,211,153,0.30)'
+                        }}
+                          onClick={startDynamicCal} disabled={!isConnected || dynCalRecording || captureBusy}>
+                          {dynCalRecording ? `Recording… ${dynCalCountdown}s remaining` : 'Start Dynamic Calibration'}
+                        </button>
                       </div>
-                    )}
-                    {/* Steps */}
-                    <div style={s.calSteps}>
-                      {CALIBRATION_STEPS.map((step, idx) => {
-                        const value = axisKnots[idx];
-                        const done = Number.isFinite(value);
-                        const active = idx === nextStepIdx;
-                        return (
-                          <div key={step.pct} style={{ ...s.calStep, ...(done ? s.calStepDone : null), ...(active ? s.calStepActive : null) }}>
-                            <span>{step.label}</span>
-                            <span>{done ? `${value.toFixed(3)}V` : (active ? '← next' : '---')}</span>
+
+                      {/* Step-by-step Wizard */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>Step-by-Step Axis Wizard</div>
+                        <div style={s.calRow}>
+                          <label style={s.calLabel}>Finger</label>
+                          <select style={s.calSelect} value={calFinger} onChange={e => { setCalFinger(parseInt(e.target.value, 10)); setSanityWarnings([]); }}>
+                            {CAL_FINGER_NAMES.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
+                          </select>
+                          <label style={s.calLabel}>Axis</label>
+                          <select style={s.calSelect} value={calAxis} onChange={e => { setCalAxis(parseInt(e.target.value, 10)); setSanityWarnings([]); }}>
+                            {CAL_AXIS_NAMES.map((name, idx) => (
+                              <option key={name} value={idx} disabled={CAL_FINGER_DEFAULTS[calFinger][idx] === -1}>{name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {/* Live voltage for this axis */}
+                        {axisAvailable && (() => {
+                          const sensorIdx = CAL_FINGER_DEFAULTS[calFinger][calAxis];
+                          const liveV = rawVoltages[sensorIdx];
+                          return (
+                            <div style={{ marginBottom: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: '#718096' }}>ch{sensorIdx} live voltage:</span>
+                              <span style={{ color: voltageToColor(liveV), fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                                {Number.isFinite(liveV) ? `${liveV.toFixed(3)} V` : '---'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        {/* Sanity warnings */}
+                        {sanityWarnings.length > 0 && (
+                          <div style={{ marginBottom: 10, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10 }}>
+                            {sanityWarnings.map((w, i) => <div key={i} style={{ fontSize: 11, color: w.startsWith('ℹ') ? '#60a5fa' : '#ef4444', marginBottom: i < sanityWarnings.length - 1 ? 4 : 0 }}>{w}</div>)}
                           </div>
-                        );
-                      })}
-                    </div>
-                    {nextStepIdx !== -1 && <p style={s.calHint}>Hold <strong>{CAL_FINGER_NAMES[calFinger]} {CAL_AXIS_NAMES[calAxis]}</strong> at <strong>{CALIBRATION_STEPS[nextStepIdx]?.pct}%</strong> then press Capture.</p>}
-                    <div style={s.calRow}>
-                      <button style={s.calBtn} onClick={captureStep}
-                        disabled={!isConnected || !axisAvailable || nextStepIdx === -1}>
-                        Capture
-                      </button>
-                      <button style={s.calBtnSecondary} onClick={resetAxis}>Reset</button>
-                      <button style={{ ...s.calBtn, opacity: axisComplete ? 1 : 0.5 }} onClick={sendKnots} disabled={!isConnected || !axisComplete}>
-                        Send Knots
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── TAB: COUPLING ── */}
-              {calTab === 'coupling' && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>🔗 Cross-Axis Coupling Compensation</div>
-                    <p style={s.calHint}>Compensates for magnetic interference between adjacent sensors. Set all 4 coefficients per finger then Apply.</p>
-                    <CouplingCalibrationUI
-                      couplingByFinger={couplingByFinger}
-                      setCouplingByFinger={setCouplingByFinger}
-                      couplingFinger={couplingFinger}
-                      setCouplingFinger={setCouplingFinger}
-                      onApply={sendCouplingSliders}
-                      isConnected={isConnected}
-                      takeMedianSamples={takeMedianSamples}
-                      setCalError={setCalError}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ── TAB: MANAGE ── */}
-              {calTab === 'manage' && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {/* IMU Commands */}
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>🧭 IMU Commands</div>
-                    <div style={s.calRow}>
-                      <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.START_BOOT_CAL)} disabled={!isConnected}>Boot Cal</button>
-                      <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.START_MAG_CAL)} disabled={!isConnected}>Mag Cal</button>
-                      <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.END_MAG_CAL)} disabled={!isConnected}>End Mag</button>
-                    </div>
-                  </div>
-                  {/* NVS Save/Load */}
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>NVS Flash</div>
-                    <div style={s.calRow}>
-                      <button style={{ ...s.calBtn, flex: 1 }} onClick={() => runCommand(CMD.SAVE_CAL)} disabled={!isConnected}>Save to Flash</button>
-                      <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={handleLoadCalNVS} disabled={!isConnected}>Load from Flash</button>
-                    </div>
-                  </div>
-                  {/* Export / Import */}
-                  <div style={s.calSection}>
-                    <div style={s.calSectionTitle}>Export / Import JSON</div>
-                    <div style={s.calRow}>
-                      <button style={{ ...s.calBtn, flex: 1 }} onClick={handleExportCal}>Export Cal JSON</button>
-                      <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={() => importInputRef.current?.click()}>Import Cal JSON</button>
-                      <input ref={importInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportCal} />
-                    </div>
-                    <p style={s.calHint}>JSON includes all knots and coupling coefficients. Import sends CMD 0x10 and 0x11 for all axes automatically.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-
-
-          {/* Signs collected */}
-          <div style={s.panel}>
-            <div style={s.panelHeader}>
-              <h3 style={s.panelTitle}>Recorded Signs</h3>
-              <p style={s.panelSub}>{signs.length} sign{signs.length !== 1 ? 's' : ''} in this submission</p>
-            </div>
-
-            {signs.length === 0 ? (
-              <div style={s.emptySignsBox}>
-                <span style={s.emptySignsIcon}>✋</span>
-                <p style={s.emptySignsText}>No signs yet — record your first one</p>
-              </div>
-            ) : (
-              <div style={s.signsList}>
-                {signs.map((sign, idx) => (
-                  <div key={idx} className="sign-tag" style={s.signTag}>
-                    <div style={s.signTagLeft}>
-                      <span style={s.signTagIndex}>{idx + 1}</span>
-                      <div>
-                        <div style={s.signTagLabel}>{sign.label}</div>
-                        <div style={s.signTagMeta}>
-                          {sign.frames.length} frames · {(sign.frames.length / 60).toFixed(1)}s
+                        )}
+                        {/* Steps */}
+                        <div style={s.calSteps}>
+                          {CALIBRATION_STEPS.map((step, idx) => {
+                            const value = axisKnots[idx];
+                            const done = Number.isFinite(value);
+                            const active = idx === nextStepIdx;
+                            return (
+                              <div key={step.pct} style={{ ...s.calStep, ...(done ? s.calStepDone : null), ...(active ? s.calStepActive : null) }}>
+                                <span>{step.label}</span>
+                                <span>{done ? `${value.toFixed(3)}V` : (active ? '← next' : '---')}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {nextStepIdx !== -1 && <p style={s.calHint}>Hold <strong>{CAL_FINGER_NAMES[calFinger]} {CAL_AXIS_NAMES[calAxis]}</strong> at <strong>{CALIBRATION_STEPS[nextStepIdx]?.pct}%</strong> then press Capture.</p>}
+                        <div style={s.calRow}>
+                          <button style={s.calBtn} onClick={captureStep}
+                            disabled={!isConnected || !axisAvailable || nextStepIdx === -1}>
+                            Capture
+                          </button>
+                          <button style={s.calBtnSecondary} onClick={resetAxis}>Reset</button>
+                          <button style={{ ...s.calBtn, opacity: axisComplete ? 1 : 0.5 }} onClick={sendKnots} disabled={!isConnected || !axisComplete}>
+                            Send Knots
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <button
-                      className="remove-sign"
-                      style={s.removeSign}
-                      onClick={() => handleRemoveSign(idx)}
-                    >
-                      ✕
-                    </button>
+                  )}
+
+                  {/* ── TAB: COUPLING ── */}
+                  {calTab === 'coupling' && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>🔗 Cross-Axis Coupling Compensation</div>
+                        <p style={s.calHint}>Compensates for magnetic interference between adjacent sensors. Set all 4 coefficients per finger then Apply.</p>
+                        <CouplingCalibrationUI
+                          couplingByFinger={couplingByFinger}
+                          setCouplingByFinger={setCouplingByFinger}
+                          couplingFinger={couplingFinger}
+                          setCouplingFinger={setCouplingFinger}
+                          onApply={sendCouplingSliders}
+                          isConnected={isConnected}
+                          takeMedianSamples={takeMedianSamples}
+                          setCalError={setCalError}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── TAB: MANAGE ── */}
+                  {calTab === 'manage' && (
+                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* IMU Commands */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>🧭 IMU Commands</div>
+                        <div style={s.calRow}>
+                          <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.START_BOOT_CAL)} disabled={!isConnected}>Boot Cal</button>
+                          <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.START_MAG_CAL)} disabled={!isConnected}>Mag Cal</button>
+                          <button style={s.calBtnSecondary} onClick={() => runCommand(CMD.END_MAG_CAL)} disabled={!isConnected}>End Mag</button>
+                        </div>
+                      </div>
+                      {/* NVS Save/Load */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>NVS Flash</div>
+                        <div style={s.calRow}>
+                          <button style={{ ...s.calBtn, flex: 1 }} onClick={() => runCommand(CMD.SAVE_CAL)} disabled={!isConnected}>Save to Flash</button>
+                          <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={handleLoadCalNVS} disabled={!isConnected}>Load from Flash</button>
+                        </div>
+                      </div>
+                      {/* Export / Import */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>Export / Import JSON</div>
+                        <div style={s.calRow}>
+                          <button style={{ ...s.calBtn, flex: 1 }} onClick={handleExportCal}>Export Cal JSON</button>
+                          <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={() => importInputRef.current?.click()}>Import Cal JSON</button>
+                          <input ref={importInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportCal} />
+                        </div>
+                        <p style={s.calHint}>JSON includes all knots and coupling coefficients. Import sends CMD 0x10 and 0x11 for all axes automatically.</p>
+                      </div>
+                      {/* Connection Settings */}
+                      <div style={s.calSection}>
+                        <div style={s.calSectionTitle}>🌐 Connection Settings</div>
+                        <p style={s.calHint}>Set the WebSocket IP address of the Master ESP32.</p>
+                        <div style={s.calRow}>
+                          <label style={s.calLabel}>IP Address</label>
+                          <input
+                            type="text"
+                            style={{ ...s.calInput, flex: 1 }}
+                            value={ipInput}
+                            onChange={e => setIpInput(e.target.value)}
+                            placeholder="e.g. 192.168.1.8"
+                          />
+                          <button style={s.calBtn} onClick={handleApplyIp}>
+                            Connect
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+              {calMainTab === 'imu' && (
+                <div style={s.panel}>
+                  <div style={s.panelHeader}>
+                    <h3 style={s.panelTitle}>🧭 IMU Pipeline</h3>
+                    <p style={s.panelSub}>Step-by-step Mahony filter initialization</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  {calError && <div style={s.calError}>{calError}</div>}
 
-          {/* Download submission */}
-          <div style={s.panel}>
-            <div style={s.panelHeader}>
-              <h3 style={s.panelTitle}>Download Submission</h3>
-              <p style={s.panelSub}>Download all recorded signs as a JSON file</p>
-            </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
 
-            <button
-              className="upload-btn"
-              style={{ ...s.uploadBtn, opacity: signs.length > 0 ? 1 : 0.4 }}
-              onClick={handleDownload}
-              disabled={signs.length === 0}
-            >
-              {downloadStatus === 'success' ? '✓ Downloaded!' : `Download ${signs.length} Sign${signs.length !== 1 ? 's' : ''} →`}
-            </button>
+                    <AlignmentPanel modelAlign={modelAlign} setModelAlign={setModelAlign} onCalibrate={calibrateMountOffsets} onTare={tareHeading} />
 
-            {downloadStatus === 'success' && (
-              <div style={s.successBanner}>
-                Submission downloaded successfully.
-              </div>
-            )}
-            {signs.length === 0 && (
-              <p style={s.disabledNote}>Add at least one sign before downloading.</p>
-            )}
-          </div>
+                    <div style={s.calSection}>
+                      <div style={s.calSectionTitle}>1. Boot Calibration</div>
+                      <p style={s.calHint}>Resets the filters and captures resting gyro biases. Keep arm still for 2 seconds.</p>
+                      <button style={{ ...s.calBtnSecondary, width: '100%' }} onClick={() => runCommand(CMD.START_BOOT_CAL)} disabled={!isConnected}>
+                        Start Boot Calibration
+                      </button>
+                    </div>
 
-          {/* DEV-only live sensor panels */}
-          {DEV_MODE && <FingerAnglesPanel frame={currentFrame} calStatus={currentFrame?.calStatus ?? 0} />}
-          {DEV_MODE && <CalStatusStrip calStatus={currentFrame?.calStatus ?? 0} knotsByAxis={knotsByAxis} />}
-          {DEV_MODE && (
-            <IMUDiagnosticsPanel
-              diag={currentFrame?.imuDiag ?? null}
-              imuQuat={currentFrame?.imuQuat ?? null}
-            />
+                    <div style={s.calSection}>
+                      <div style={s.calSectionTitle}>2. Magnetometer Calibration</div>
+                      <p style={s.calHint}>Wave the arm in an aggressive figure-8 pattern to map the local magnetic hard-iron offsets.</p>
+                      <div style={s.calRow}>
+                        <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={() => runCommand(CMD.START_MAG_CAL)} disabled={!isConnected}>Start Sweep</button>
+                        <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={() => runCommand(CMD.END_MAG_CAL)} disabled={!isConnected}>Finish & Save</button>
+                      </div>
+                    </div>
+
+                    <div style={s.calSection}>
+                      <div style={s.calSectionTitle}>3. 6-Pose Static Alignment</div>
+                      <p style={s.calHint}>Align the coordinate frames by holding 6 distinct poses (T-pose, N-pose, etc). Click Record for each.</p>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <button style={{ ...s.calBtnSecondary, flex: 1 }} onClick={() => runCommand(CMD.START_STATIC_ALIGN)} disabled={!isConnected}>
+                          Start Alignment
+                        </button>
+                        <button style={{ ...s.calBtn, flex: 2, background: gloveFrame.imuPoseIdx < 6 ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)' }}
+                          onClick={() => {
+                            if (gloveFrame.imuPoseIdx < 6) {
+                              runCommand(CMD.RECORD_STATIC_POSE);
+                            }
+                          }}
+                          disabled={!isConnected || gloveFrame.imuPoseIdx >= 6}>
+                          Record Pose {gloveFrame.imuPoseIdx < 6 ? gloveFrame.imuPoseIdx + 1 : 'Complete'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <button style={{ ...s.calBtn, flex: 1, borderColor: magEnabled ? '#34d399' : '#ef4444', color: magEnabled ? '#34d399' : '#ef4444' }} onClick={toggleMagUsage} disabled={!isConnected}>
+                          Magnetometer Usage: {magEnabled ? 'ENABLED' : 'DISABLED'}
+                        </button>
+                      </div>
+                      <button style={{ ...s.calBtn, width: '100%', borderColor: '#60a5fa', color: '#60a5fa' }} onClick={() => runCommand(CMD.ENTER_RUNNING)} disabled={!isConnected}>
+                        Skip to RUNNING State (Quick Test)
+                      </button>
+                    </div>
+
+                    <div style={{ ...s.calSection, background: '#000', padding: '8px', border: '1px solid #333', overflow: 'hidden' }}>
+                      <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '1px', fontWeight: 'bold' }}>Firmware Logs</div>
+                      <div style={{ height: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column-reverse', fontFamily: 'monospace', fontSize: 11, color: '#a0aec0' }}>
+                        {[...(gloveFrame.consoleLogs || [])].reverse().map((log, idx) => (
+                          <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{log.trim()}</div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+            </>
           )}
+
+          {mainTab === 'exo' && (
+            <>
+              {/* Signs collected */}
+              <div style={s.panel}>
+                <div style={s.panelHeader}>
+                  <h3 style={s.panelTitle}>Recorded Signs</h3>
+                  <p style={s.panelSub}>{signs.length} sign{signs.length !== 1 ? 's' : ''} in this submission</p>
+                </div>
+
+                {signs.length === 0 ? (
+                  <div style={s.emptySignsBox}>
+                    <span style={s.emptySignsIcon}>✋</span>
+                    <p style={s.emptySignsText}>No signs yet — record your first one</p>
+                  </div>
+                ) : (
+                  <div style={s.signsList}>
+                    {signs.map((sign, idx) => (
+                      <div key={idx} className="sign-tag" style={s.signTag}>
+                        <div style={s.signTagLeft}>
+                          <span style={s.signTagIndex}>{idx + 1}</span>
+                          <div>
+                            <div style={s.signTagLabel}>{sign.label}</div>
+                            <div style={s.signTagMeta}>
+                              {sign.frames.length} frames · {(sign.frames.length / 60).toFixed(1)}s
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          className="remove-sign"
+                          style={s.removeSign}
+                          onClick={() => handleRemoveSign(idx)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Download submission */}
+              <div style={s.panel}>
+                <div style={s.panelHeader}>
+                  <h3 style={s.panelTitle}>Download Submission</h3>
+                  <p style={s.panelSub}>Download all recorded signs as a JSON file</p>
+                </div>
+
+                <button
+                  className="upload-btn"
+                  style={{ ...s.uploadBtn, opacity: signs.length > 0 ? 1 : 0.4 }}
+                  onClick={handleDownload}
+                  disabled={signs.length === 0}
+                >
+                  {downloadStatus === 'success' ? '✓ Downloaded!' : `Download ${signs.length} Sign${signs.length !== 1 ? 's' : ''} →`}
+                </button>
+
+                {downloadStatus === 'success' && (
+                  <div style={s.successBanner}>
+                    Submission downloaded successfully.
+                  </div>
+                )}
+                {signs.length === 0 && (
+                  <p style={s.disabledNote}>Add at least one sign before downloading.</p>
+                )}
+              </div>
+
+              {/* DEV-only live sensor panels */}
+              {DEV_MODE && <FingerAnglesPanel frame={currentFrame} calStatus={currentFrame?.calStatus ?? 0} />}
+              {DEV_MODE && <CalStatusStrip calStatus={currentFrame?.calStatus ?? 0} knotsByAxis={knotsByAxis} />}
+            </>
+          )}
+
+          {mainTab === 'imu' && (
+            <>
+              <IMUDiagnosticsPanel
+                diag={currentFrame?.imuDiag ?? null}
+                imuQuat={currentFrame?.imuQuat ?? null}
+              />
+            </>
+          )}
+
         </div>
       </div>
 
@@ -2379,6 +2975,53 @@ export default function GloveCapture() {
                   <span style={{ fontSize: 11, color: '#60a5fa', width: 42, textAlign: 'right' }}>{restRotationL[i].toFixed(2)}</span>
                 </div>
               ))}
+
+              {/* ARMS SECTION (Moved here so it collapses with Rest Pose Tuner) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 16, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#a0aec0' }}>🧪 Manual Arms / Offline Pose</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      localStorage.setItem('esl_glove_offline_right', JSON.stringify(manualRightArm));
+                      localStorage.setItem('esl_glove_offline_left', JSON.stringify(manualLeftArm));
+                      alert('Offline default pose saved to local storage!');
+                    }}
+                    style={{ fontSize: 10, padding: '3px 8px', background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 6, color: '#34d399', cursor: 'pointer' }}
+                  >Save Default</button>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={manualArmsEnable} onChange={e => setManualArmsEnable(e.target.checked)} />
+                  <span style={{ fontSize: 11, color: '#718096' }}>Enable Live Override</span>
+                </label>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { label: 'Right Arm', state: manualRightArm, setter: setManualRightArm, color: '#e2b96f' },
+                  { label: 'Left Arm', state: manualLeftArm, setter: setManualLeftArm, color: '#60a5fa' }
+                ].map(({ label, state, setter, color }) => (
+                  <div key={label} style={{ marginTop: 4, padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: `1px solid ${color}33` }}>
+                    <div style={{ fontSize: 12, fontWeight: 'bold', color: color, marginBottom: 8 }}>{label}</div>
+                    {['upperArm', 'forearm', 'hand'].map((joint) => (
+                      <div key={joint} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: '#a0aec0', textTransform: 'capitalize' }}>{joint} Euler (Deg) X Y Z</span>
+                          <span style={{ fontSize: 11, color: color }}>{state[joint].map(v => Math.round(v)).join(' , ')}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          <input type="range" min="-180" max="180" step="1" value={state[joint][0]} title={`${joint} X`}
+                            onChange={e => { const v = Number(e.target.value); setter(p => ({ ...p, [joint]: [v, p[joint][1], p[joint][2]] })); }} />
+                          <input type="range" min="-180" max="180" step="1" value={state[joint][1]} title={`${joint} Y`}
+                            onChange={e => { const v = Number(e.target.value); setter(p => ({ ...p, [joint]: [p[joint][0], v, p[joint][2]] })); }} />
+                          <input type="range" min="-180" max="180" step="1" value={state[joint][2]} title={`${joint} Z`}
+                            onChange={e => { const v = Number(e.target.value); setter(p => ({ ...p, [joint]: [p[joint][0], p[joint][1], v] })); }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2483,15 +3126,17 @@ export default function GloveCapture() {
           )}
           {/* ── Manual Pose Tester (DEV only) ── */}
           <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            
+            {/* FINGERS SECTION */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#a0aec0' }}>🧪 Manual Pose</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#a0aec0' }}>🧪 Manual Fingers</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={manualEnable} onChange={e => setManualEnable(e.target.checked)} />
-                <span style={{ fontSize: 11, color: '#718096' }}>Enable</span>
+                <input type="checkbox" checked={manualFingersEnable} onChange={e => setManualFingersEnable(e.target.checked)} />
+                <span style={{ fontSize: 11, color: '#718096' }}>Enable Override</span>
               </label>
             </div>
-            {manualEnable && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {manualFingersEnable && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {['Pinky', 'Ring', 'Middle', 'Index', 'Thumb'].map((name, fi) => {
                   const isThumb = name === 'Thumb';
                   const yawAxis = isThumb ? 'Y' : 'Z';
@@ -2521,21 +3166,6 @@ export default function GloveCapture() {
                   </div>
                   <input type="range" min="-90" max="90" step="1" value={manualThumbExtra} title="Thumb IP (Z)"
                     onChange={e => setManualThumbExtra(Number(e.target.value))} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: '#a0aec0' }}>Wrist Euler (deg) X Y Z</span>
-                    <span style={{ fontSize: 11, color: '#e2b96f' }}>{manualWristEuler.map(v => Math.round(v)).join(' , ')}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <input type="range" min="-180" max="180" step="1" value={manualWristEuler[0]}
-                      onChange={e => { const v = Number(e.target.value); setManualWristEuler(p => { const n = [...p]; n[0] = v; return n; }); }} />
-                    <input type="range" min="-180" max="180" step="1" value={manualWristEuler[1]}
-                      onChange={e => { const v = Number(e.target.value); setManualWristEuler(p => { const n = [...p]; n[1] = v; return n; }); }} />
-                    <input type="range" min="-180" max="180" step="1" value={manualWristEuler[2]}
-                      onChange={e => { const v = Number(e.target.value); setManualWristEuler(p => { const n = [...p]; n[2] = v; return n; }); }} />
-                  </div>
                 </div>
               </div>
             )}
