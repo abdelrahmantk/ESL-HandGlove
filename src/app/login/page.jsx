@@ -13,65 +13,65 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
-  const [isLoading , setIsLoading]=useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const handleLogin = async (e) => {
-      e.preventDefault();
-      console.log("Login attempted with:", { email, password });
-      setError("");
-      setIsLoading(true);
-      try {      
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          console.log(error)
-          setError(error.message);
-          setPassword("");
-          setEmail("");
-          setIsLoading(false);
-        } else{
-          router.push("/");
-        }
-      } catch (err) {
-        setError("Connection error. Please try again.");
+    e.preventDefault();
+    //console.log("Login attempted with:", { email, password });
+    setError("");
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        //console.log(error)
+        setError(error.message);
+        setPassword("");
+        setEmail("");
         setIsLoading(false);
+      } else {
+        router.push("/");
+      }
+    } catch (err) {
+      setError("Connection error. Please try again.");
+      setIsLoading(false);
+    }
+
+  };
+
+  /*     const handleLogin = async (e) => {
+
+ e.preventDefault();
+
+
+    try {
+      const res = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        setError("Invalid Email or password");
+        setPassword("");
+        setUsername("");
+        setIsLoading(false);
+        return;
       }
 
-    };
+      const data = await res.json();
 
-    /*     const handleLogin = async (e) => {
+      localStorage.setItem("token", data.token);
 
-   e.preventDefault();
-
-
-      try {
-        const res = await fetch("http://localhost:5000/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        });
-
-        if (!res.ok) {
-          setError("Invalid Email or password");
-          setPassword("");
-          setUsername("");
-          setIsLoading(false);
-          return;
-        }
-
-        const data = await res.json();
-
-        localStorage.setItem("token", data.token);
-
-        router.push("/");
-      } catch (err) {
-        setError("Connection error. Please try again.");
-        setIsLoading(false);
-      } 
-    };*/
+      router.push("/");
+    } catch (err) {
+      setError("Connection error. Please try again.");
+      setIsLoading(false);
+    } 
+  };*/
 
   return (
     <div style={styles.page}>
@@ -87,7 +87,7 @@ export default function LoginPage() {
         <div style={styles.formCard}>
           <div style={styles.formTop}>
             <h1 style={styles.heading}>Welcome back</h1>
-             <p style={styles.subtitle}>Help us empower them</p>
+            <p style={styles.subtitle}>Help us empower them</p>
           </div>
 
           <form style={styles.form} onSubmit={handleLogin} >
@@ -119,33 +119,33 @@ export default function LoginPage() {
                   onBlur={e => Object.assign(e.target.style, { borderColor: '#e2e8f0', boxShadow: 'none' })}
                   required
                 />
-              <button
+                <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
                   style={styles.togglePassword}
                   aria-label={showPass ? "Hide password" : "Show password"}
                 >
-                  <img 
-                    src={showPass ? show.src : hide.src} 
-                    alt={showPass ? "Hide" : "Show"} 
-                    width="20" 
-                    height="20" 
-                    style={{opacity: 0.6}}
+                  <img
+                    src={showPass ? show.src : hide.src}
+                    alt={showPass ? "Hide" : "Show"}
+                    width="20"
+                    height="20"
+                    style={{ opacity: 0.6 }}
                   />
                 </button>
               </div>
             </div>
             {/* Error Message */}
-              {error && (
-                <div style={styles.errorBox}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{minWidth: '18px'}}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  <span>{error}</span>
-                </div>
-              )}
+            {error && (
+              <div style={styles.errorBox}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ minWidth: '18px' }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
             <button
               type="submit"
               style={{ ...styles.btn, opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
@@ -154,7 +154,7 @@ export default function LoginPage() {
               onMouseLeave={e => !isLoading && Object.assign(e.target.style, { background: '#1a1a2e', transform: 'translateY(0)' })}
             >
               {isLoading ? <div className="spinner" /> : "Sign In →"}
-          </button>
+            </button>
           </form>
 
           <p style={styles.switchText}>
@@ -241,7 +241,7 @@ const styles = {
     fontWeight: 300,
     letterSpacing: '0.5px',
   },
-  togglePassword:{
+  togglePassword: {
     boxSizing: 'border-box',
     margin: 0,
     backgroundColor: 'transparent',
@@ -323,7 +323,7 @@ const styles = {
     transition: 'border-color 0.2s, box-shadow 0.2s',
     fontFamily: "'DM Sans', sans-serif",
   },
-  inputPass:{
+  inputPass: {
     border: 'none',
     fontSize: '14px',
     color: '#1a202c',

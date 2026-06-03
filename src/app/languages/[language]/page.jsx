@@ -12,7 +12,7 @@ export default function SubmissionsPage() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [modalLoading, setModalLoading] =useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const languageId = searchParams.get("languageId");
   const [language, setLanguage] = useState(null);
   const [submissions, setSubmissions] = useState([]);
@@ -47,209 +47,210 @@ export default function SubmissionsPage() {
   }, []);
 
   useEffect(() => {
-      async function init() {
-        setLoading(true);
-
-        // 1. Get model brief first
-        const res = await fetch(`${backendUrl}/languages/languageInfo?languageId=${languageId}`);
-        const data = await res.json();
-        console.log("language info data:", data);
-        const fetchedLanguageName = data[0].language_name;
-        setLanguage(fetchedLanguageName);
-
-        // 2. Get user
-        const { data: { user } } = await supabase.auth.getUser();
-        setUserEmail(user.email);
-        setUserId(user.id);
-        console.log("Authenticated user:", user);
-        const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
-        const userData = await userRes.json();
-        setUser(userData[0]);
-        console.log("Profile info:", userData);
-
-        // 3. Now fetch submissions using the LOCAL variable, not state
-        const subRes = await fetch(
-          `${backendUrl}/submissions/language?languageId=${languageId}`
-        );
-        const subData = await subRes.json();
-        console.log("Fetched submissions:", subData);
-        setSubmissions(Array.isArray(subData) ? subData : []);
-
-        setLoading(false);
-      }
-
-      if (languageId) init(); // guard: don't run if languageId is still null
-    }, [languageId]);
-
-  async function reget() {
+    async function init() {
       setLoading(true);
+
+      // 1. Get model brief first
+      const res = await fetch(`${backendUrl}/languages/languageInfo?languageId=${languageId}`);
+      const data = await res.json();
+      //console.log("language info data:", data);
+      const fetchedLanguageName = data[0].language_name;
+      setLanguage(fetchedLanguageName);
+
+      // 2. Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserEmail(user.email);
+      setUserId(user.id);
+      //console.log("Authenticated user:", user);
+      const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
+      const userData = await userRes.json();
+      setUser(userData[0]);
+      //console.log("Profile info:", userData);
+
+      // 3. Now fetch submissions using the LOCAL variable, not state
       const subRes = await fetch(
         `${backendUrl}/submissions/language?languageId=${languageId}`
       );
       const subData = await subRes.json();
-      console.log("Fetched submissions:", subData);
+      //console.log("Fetched submissions:", subData);
       setSubmissions(Array.isArray(subData) ? subData : []);
-      setSelected([]);
+
       setLoading(false);
-    };
+    }
+
+    if (languageId) init(); // guard: don't run if languageId is still null
+  }, [languageId]);
+
+  async function reget() {
+    setLoading(true);
+    const subRes = await fetch(
+      `${backendUrl}/submissions/language?languageId=${languageId}`
+    );
+    const subData = await subRes.json();
+    //console.log("Fetched submissions:", subData);
+    setSubmissions(Array.isArray(subData) ? subData : []);
+    setSelected([]);
+    setLoading(false);
+  };
 
   const toggleSelection = (e, id, submission) => {
-      e.stopPropagation();
+    e.stopPropagation();
 
-      // 1. Update IDs state
-      setSelected((prev) =>
-        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-      );
+    // 1. Update IDs state
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
 
-      // 2. Update Submissions Objects state
-      // FIX: Remove { } so the result is automatically returned
-      setSelectedSubmissions((prev) =>
-        prev.includes(submission) ? prev.filter((item) => item !== submission) : [...prev, submission]
-      );
+    // 2. Update Submissions Objects state
+    // FIX: Remove { } so the result is automatically returned
+    setSelectedSubmissions((prev) =>
+      prev.includes(submission) ? prev.filter((item) => item !== submission) : [...prev, submission]
+    );
 
-      console.log("Toggled selection for ID:", id);
-    };
+    //console.log("Toggled selection for ID:", id);
+  };
 
   const handleOpenView = (submission) => {
     setActiveSubmission(submission);
     setShowViewModal(true);
   };
 
-  const handleDelete = async (sid,uid, readings_file) => {
-        if (uid !== userId) {
-          setShowError(true);
-          return;
-        }
-        try {
-            const response = await fetch(`${backendUrl}/submissions/${sid}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json', // <--- This is the missing piece!
-                },
-                body:JSON.stringify({
-                          readings_file: readings_file,
-                }),
-            });
-            setSelected(prev => prev.filter(id => id !== sid));
-            if (response.ok) {
-                setSubmissions(prev => prev.filter(s => s.sid !== sid));
-                setSubmissionDeleting(null);
-                toast.success("Submission deleted Successfully"); 
-            } else {
-                const err = await response.json();
-                toast.error(`Error: ${err.error}`);
-            }
-        } catch (err) {
-            console.error("Delete failed:", err);
-        }
-    };
+  const handleDelete = async (sid, uid, readings_file) => {
+    if (uid !== userId) {
+      setShowError(true);
+      return;
+    }
+    try {
+      const response = await fetch(`${backendUrl}/submissions/${sid}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json', // <--- This is the missing piece!
+        },
+        body: JSON.stringify({
+          readings_file: readings_file,
+        }),
+      });
+      setSelected(prev => prev.filter(id => id !== sid));
+      if (response.ok) {
+        setSubmissions(prev => prev.filter(s => s.sid !== sid));
+        setSubmissionDeleting(null);
+        toast.success("Submission deleted Successfully");
+      } else {
+        const err = await response.json();
+        toast.error(`Error: ${err.error}`);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
 
   const handleDownload = (selected) => {
-      if (!selected || selected.length === 0) return toast.error("Select items first");
-      console.log("Initiating download for IDs:", selected);
-      const idsParam = selected.join(',');
-      setSelected([]);
-      window.open(`${backendUrl}/submissions/download?ids=${idsParam}`, '_blank');
+    if (!selected || selected.length === 0) return toast.error("Select items first");
+    //console.log("Initiating download for IDs:", selected);
+    const idsParam = selected.join(',');
+    setSelected([]);
+    window.open(`${backendUrl}/submissions/download?ids=${idsParam}`, '_blank');
   };
 
   const handleMerge = async (e) => {
-      e.preventDefault();
-      // 1. Ownership Validation
-      console.log("Selected for merge:", selectedSubmissions);
-      const unauthorized = selectedSubmissions.some(sub => {
-        return sub && sub.uid !== userId;
+    e.preventDefault();
+    // 1. Ownership Validation
+    //console.log("Selected for merge:", selectedSubmissions);
+    const unauthorized = selectedSubmissions.some(sub => {
+      return sub && sub.uid !== userId;
+    });
+
+    if (unauthorized) {
+      setShowError(true);
+      return;
+    }
+
+    const newName = mergedName.trim();
+    if (!newName) return;
+    setModalLoading(true);
+    try {
+      const response = await fetch(`${backendUrl}/submissions/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sids: selected,
+          newName: newName,
+          userId: userId, // Replace with real Auth UID
+          lid: languageId
+        })
       });
 
-      if (unauthorized) {
-          setShowError(true);
-          return;
+      if (response.ok) {
+        toast.success("Submissions merged successful!");
+        setSelectedSubmissions([]);
+        setMergedName("");
+        setModalLoading(false);
+        setShowMergeModal(false);
+        reget();
       }
-
-      const newName = mergedName.trim();
-      if (!newName) return;
-      setModalLoading(true);
-      try {
-          const response = await fetch(`${backendUrl}/submissions/merge`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  sids: selected,
-                  newName: newName,
-                  userId: userId, // Replace with real Auth UID
-                  lid: languageId
-              })
-          });
-
-          if (response.ok) {
-              toast.success("Submissions merged successful!");
-              setSelectedSubmissions([]);
-              setMergedName("");
-              setModalLoading(false);
-              setShowMergeModal(false);
-              reget();          }
-      } catch (err) {
-          toast.error("Merge failed.");
-      }
+    } catch (err) {
+      toast.error("Merge failed.");
+    }
   };
 
   const handleUpload = async (e) => {
-      e.preventDefault();
-      if (!selectedFile || !submissionName) {
-          toast.error("Please provide both a name and a file.");
-          return;
-      }
-      setModalLoading(true);
-      try {
-          // 1. Read the file content
-          const fileReader = new FileReader();
-          
-          fileReader.onload = async (e) => {
-              try {
-                  const fileContent = JSON.parse(e.target.result);
-                  console.log("Parsed file content:", fileContent);
+    e.preventDefault();
+    if (!selectedFile || !submissionName) {
+      toast.error("Please provide both a name and a file.");
+      return;
+    }
+    setModalLoading(true);
+    try {
+      // 1. Read the file content
+      const fileReader = new FileReader();
 
-                  // 2. Send to Backend
-                  const response = await fetch(`${backendUrl}/submissions/addSubmission`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          newName: submissionName,
-                          userId: userId,
-                          lid: languageId,
-                          fileContent: fileContent
-                      })
-                  });
+      fileReader.onload = async (e) => {
+        try {
+          const fileContent = JSON.parse(e.target.result);
+          //console.log("Parsed file content:", fileContent);
 
-                  const result = await response.json();
+          // 2. Send to Backend
+          const response = await fetch(`${backendUrl}/submissions/addSubmission`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              newName: submissionName,
+              userId: userId,
+              lid: languageId,
+              fileContent: fileContent
+            })
+          });
 
-                  if (result.success) {
-                      toast.success("Upload successful!");
-                      setSelectedFile(null);
-                      setSubmissionName("");
-                      setModalLoading(false);
-                      setShowUploadModal(false);
-                      reget();
-                  } else {
-                      throw new Error(result.message);
-                  }
-              } catch (err) {
-                  toast.error("ERROR: " + err.message);
-              }
-          };
+          const result = await response.json();
 
-          fileReader.readAsText(selectedFile);
+          if (result.success) {
+            toast.success("Upload successful!");
+            setSelectedFile(null);
+            setSubmissionName("");
+            setModalLoading(false);
+            setShowUploadModal(false);
+            reget();
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (err) {
+          toast.error("ERROR: " + err.message);
+        }
+      };
 
-      } catch (error) {
-          console.error("Upload Error:", error);
-          toast.error("error reading file");
-      }
+      fileReader.readAsText(selectedFile);
+
+    } catch (error) {
+      console.error("Upload Error:", error);
+      toast.error("error reading file");
+    }
   };
 
   const selectedCount = selected.length;
   const myCount = submissions.filter(s => s.uid === userId).length;
 
   if (loading) return (<div style={s.page}>
-                        <style>{`        
+    <style>{`        
                         .loader-overlay {
                           position: fixed;
                           top: 0;
@@ -275,11 +276,11 @@ export default function SubmissionsPage() {
                         @keyframes spin { 
                           to { transform: rotate(360deg); } 
                         `}
-                        </style>
-                        <div className="loader-overlay">
-                          <div className="main-spinner"></div>
-                        </div>
-                      </div>);
+    </style>
+    <div className="loader-overlay">
+      <div className="main-spinner"></div>
+    </div>
+  </div>);
 
   return (
     <div style={s.page}>
@@ -329,41 +330,41 @@ export default function SubmissionsPage() {
       `}</style>
 
       <nav style={s.nav}>
-              <div style={s.navBrand}>
-                <div ><Image src={logo} alt="Logo" width="50" height="50" /></div>
-                <span style={s.navName}>صوتك</span>
+        <div style={s.navBrand}>
+          <div ><Image src={logo} alt="Logo" width="50" height="50" /></div>
+          <span style={s.navName}>صوتك</span>
+        </div>
+
+        <div style={s.userArea} ref={dropdownRef}>
+          <button style={s.userPill} onClick={() => setDropdownOpen(o => !o)}>
+            <div style={s.avatar}>{user?.initials}</div>
+            <span style={s.userName}>{user?.username}</span>
+            <span style={{ color: '#a0aec0', fontSize: '11px', marginLeft: '4px' }}>
+              {dropdownOpen ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {dropdownOpen && (
+            <div style={s.dropdown}>
+              <div style={s.dropdownHeader}>
+                <div style={{ ...s.avatar, width: '36px', height: '36px', fontSize: '13px' }}>{user?.initials}</div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a2e' }}>{user?.username}</div>
+                  <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{userEmail}</div>
+                </div>
               </div>
-      
-              <div style={s.userArea} ref={dropdownRef}>
-                <button style={s.userPill} onClick={() => setDropdownOpen(o => !o)}>
-                  <div style={s.avatar}>{user?.initials}</div>
-                  <span style={s.userName}>{user?.username}</span>
-                  <span style={{ color: '#a0aec0', fontSize: '11px', marginLeft: '4px' }}>
-                    {dropdownOpen ? '▲' : '▼'}
-                  </span>
-                </button>
-      
-                {dropdownOpen && (
-                  <div style={s.dropdown}>
-                    <div style={s.dropdownHeader}>
-                      <div style={{ ...s.avatar, width: '36px', height: '36px', fontSize: '13px' }}>{user?.initials}</div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a2e' }}>{user?.username}</div>
-                        <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{userEmail}</div>
-                      </div>
-                    </div>
-                    <div style={s.dropdownDivider} />
-                      <button onClick={() => router.push("/models")} className="dropdown-item" style={s.dropdownItem}>Models</button>
-                    <div style={s.dropdownDivider} />
-                      <button onClick={() => router.push("/")} className="dropdown-item" style={s.dropdownItem}>Home</button>
-                    <div style={s.dropdownDivider} />
-                      <button onClick={() => router.push("/login")} className="logout-item" style={{ ...s.dropdownItem, color: '#e74c3c' }}>
-                      Sign out →
-                    </button>
-                  </div>
-                )}
-              </div>
-            </nav>
+              <div style={s.dropdownDivider} />
+              <button onClick={() => router.push("/models")} className="dropdown-item" style={s.dropdownItem}>Models</button>
+              <div style={s.dropdownDivider} />
+              <button onClick={() => router.push("/")} className="dropdown-item" style={s.dropdownItem}>Home</button>
+              <div style={s.dropdownDivider} />
+              <button onClick={() => router.push("/login")} className="logout-item" style={{ ...s.dropdownItem, color: '#e74c3c' }}>
+                Sign out →
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
 
       {/* MAIN */}
       <main style={s.main}>
@@ -427,80 +428,80 @@ export default function SubmissionsPage() {
           </div>
         ) : (
           <div style={s.list}>
-          {submissions.map((submission) => {
-            const isSelected = selected.includes(submission.sid);
-            return (
-              <div
-                key={submission.sid}
-                className="sub-item"
-                style={{ 
-                  ...s.item, 
-                  ...(isSelected ? s.itemSelected : {}), 
-                  ...(hoveredId === submission.sid && !isSelected ? s.itemHover : {}),
-                  cursor: 'pointer' // Shows the whole box is interactive
-                }}
-                // 1. Clicking the box now toggles selection
-                onClick={(e) => toggleSelection(e, submission.sid,submission)} 
-                onMouseEnter={() => setHoveredId(submission.sid)}
-                onMouseLeave={() => setHoveredId(null)}
-              >
-                {isSelected && <div style={s.itemAccent} />}
-                
-                {/* Checkbox reflects state */}
-                <div style={{ ...s.checkbox, ...(isSelected ? s.checkboxChecked : {}) }}>
-                  {isSelected && <span style={s.checkMark}>✓</span>}
-                </div>
-
-                <div style={s.fileIcon}>📄</div>
-                <div 
-                  style={{ 
-                    ...s.itemInfo, 
-                    padding: '4px 8px', 
-                    borderRadius: '4px',
-                    transition: 'background 0.2s'
+            {submissions.map((submission) => {
+              const isSelected = selected.includes(submission.sid);
+              return (
+                <div
+                  key={submission.sid}
+                  className="sub-item"
+                  style={{
+                    ...s.item,
+                    ...(isSelected ? s.itemSelected : {}),
+                    ...(hoveredId === submission.sid && !isSelected ? s.itemHover : {}),
+                    cursor: 'pointer' // Shows the whole box is interactive
                   }}
+                  // 1. Clicking the box now toggles selection
+                  onClick={(e) => toggleSelection(e, submission.sid, submission)}
+                  onMouseEnter={() => setHoveredId(submission.sid)}
+                  onMouseLeave={() => setHoveredId(null)}
                 >
-                  <span style={s.itemName}>{submission.submission_name}</span>
-                  {/* 3. Visual cue for the signs part */}
-                  <span style={{ 
-                    ...s.itemMeta, 
-                    color: '#007bff', 
-                    textDecoration: 'underline',
-                    fontWeight: '500', 
-                    padding: '2px 10px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    width: 'fit-content',
-                  }}
-                  className="info-clickable-area"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevents the box-level toggleSelection from firing
-                    handleOpenView(submission);
-                  }}
+                  {isSelected && <div style={s.itemAccent} />}
+
+                  {/* Checkbox reflects state */}
+                  <div style={{ ...s.checkbox, ...(isSelected ? s.checkboxChecked : {}) }}>
+                    {isSelected && <span style={s.checkMark}>✓</span>}
+                  </div>
+
+                  <div style={s.fileIcon}>📄</div>
+                  <div
+                    style={{
+                      ...s.itemInfo,
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      transition: 'background 0.2s'
+                    }}
                   >
-                    {submission.language_name} • {submission.signs.length} signs
-                  </span>
-                </div>
+                    <span style={s.itemName}>{submission.submission_name}</span>
+                    {/* 3. Visual cue for the signs part */}
+                    <span style={{
+                      ...s.itemMeta,
+                      color: '#007bff',
+                      textDecoration: 'underline',
+                      fontWeight: '500',
+                      padding: '2px 10px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      width: 'fit-content',
+                    }}
+                      className="info-clickable-area"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevents the box-level toggleSelection from firing
+                        handleOpenView(submission);
+                      }}
+                    >
+                      {submission.language_name} • {submission.signs.length} signs
+                    </span>
+                  </div>
 
-                <div style={{ ...s.ownerBadge, ...(submission.uid === userId ? s.ownerBadgeMe : s.ownerBadgeOther) }}>
-                  {submission.uid === userId ? 'Owned' : 'Shared'}
-                </div>
+                  <div style={{ ...s.ownerBadge, ...(submission.uid === userId ? s.ownerBadgeMe : s.ownerBadgeOther) }}>
+                    {submission.uid === userId ? 'Owned' : 'Shared'}
+                  </div>
 
-                <button 
-                  className="delete-btn" 
-                  style={s.deleteBtn} 
-                  onClick={(e) => { 
-                    e.stopPropagation(); // Prevents toggleSelection
-                    setShowDeleteModal(true);
-                    setSubmissionDeleting(submission); 
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                  <button
+                    className="delete-btn"
+                    style={s.deleteBtn}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevents toggleSelection
+                      setShowDeleteModal(true);
+                      setSubmissionDeleting(submission);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
       </main>
 
@@ -544,8 +545,8 @@ export default function SubmissionsPage() {
             </p>
             <button
               className="delete-btn2"
-              style={{ ...s.deleteBtn2, marginTop: 8 , marginRight: 20}}
-              onClick={() => {setShowDeleteModal(false); handleDelete(submissionDeleting?.sid, submissionDeleting?.uid, submissionDeleting?.readings_file);}}
+              style={{ ...s.deleteBtn2, marginTop: 8, marginRight: 20 }}
+              onClick={() => { setShowDeleteModal(false); handleDelete(submissionDeleting?.sid, submissionDeleting?.uid, submissionDeleting?.readings_file); }}
             >
               Delete
             </button>

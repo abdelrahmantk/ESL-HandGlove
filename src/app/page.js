@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import logo from "./assets/logo.png";
 import trash from "./assets/trash.png";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
 
@@ -41,18 +41,18 @@ export default function LanguagesPage() {
       // 1. Get model brief first
       const res = await fetch(`${backendUrl}/languages/languages`);
       const data = await res.json();
-      console.log("languages:", data);
+      //console.log("languages:", data);
       setLanguages(data);
 
       // 2. Get user
       const { data: { user } } = await supabase.auth.getUser();
       setUserEmail(user.email);
       setUserId(user.id);
-      console.log("Authenticated user:", user);
+      //console.log("Authenticated user:", user);
       const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
       const userData = await userRes.json();
       setUser(userData[0]);
-      console.log("Profile info:", userData);
+      //console.log("Profile info:", userData);
 
       setLoading(false);
     }
@@ -64,69 +64,69 @@ export default function LanguagesPage() {
     setLoading(true);
     const res = await fetch(`${backendUrl}/languages/languages`);
     const data = await res.json();
-    console.log("languages:", data);
+    //console.log("languages:", data);
     setLanguages(data);
     setLoading(false);
   };
 
-  const handleDelete = async (lid,uid) => {
-      if (uid !== userId) {
-        setShowError(true);
-        return;
-      }
+  const handleDelete = async (lid, uid) => {
+    if (uid !== userId) {
+      setShowError(true);
+      return;
+    }
 
-      try {
-          const response = await fetch(`${backendUrl}/languages/${lid}`, {
-              method: 'DELETE',
-          });
-          if (response.ok) {
-              setLanguages(prev => prev.filter(l => l.lid !== lid));
-              setLanguageDeleting(null); 
-              toast.success("Language deleted successfully");
-          } else {
-              const err = await response.json();
-              toast.error(`Error: ${err.error}`);
-          }
-      } catch (err) {
-          console.error("Delete failed:", err);
+    try {
+      const response = await fetch(`${backendUrl}/languages/${lid}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setLanguages(prev => prev.filter(l => l.lid !== lid));
+        setLanguageDeleting(null);
+        toast.success("Language deleted successfully");
+      } else {
+        const err = await response.json();
+        toast.error(`Error: ${err.error}`);
       }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   const handleSave = async (e) => {
-      e.preventDefault();
-      if (!langName.trim()) {
-          toast.error("Please provide a name.");
-          return;
-      }
+    e.preventDefault();
+    if (!langName.trim()) {
+      toast.error("Please provide a name.");
+      return;
+    }
     if (langName.trim()) {
       try {
-          const response = await fetch(`${backendUrl}/languages/addLanguage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  language_name: langName,
-                  uid: userId
-              })
-          });
+        const response = await fetch(`${backendUrl}/languages/addLanguage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            language_name: langName,
+            uid: userId
+          })
+        });
 
-          const result = await response.json();
+        const result = await response.json();
 
-          if (result.success) {
-              toast.success("Added successfully!");
-              setLangName("");
-              setShowModal(false);
-              reget();
-          } else {
-              throw new Error(result.message);
-          }
+        if (result.success) {
+          toast.success("Added successfully!");
+          setLangName("");
+          setShowModal(false);
+          reget();
+        } else {
+          throw new Error(result.message);
+        }
       } catch (err) {
-          toast.error("ERROR: " + err.message);
+        toast.error("ERROR: " + err.message);
       }
     }
   };
 
   if (loading) return (<div style={s.page}>
-                        <style>{`        
+    <style>{`        
                         .loader-overlay {
                           position: fixed;
                           top: 0;
@@ -152,11 +152,11 @@ export default function LanguagesPage() {
                         @keyframes spin { 
                           to { transform: rotate(360deg); } 
                         `}
-                        </style>
-                        <div className="loader-overlay">
-                          <div className="main-spinner"></div>
-                        </div>
-                      </div>);
+    </style>
+    <div className="loader-overlay">
+      <div className="main-spinner"></div>
+    </div>
+  </div>);
 
 
   return (
@@ -258,16 +258,16 @@ export default function LanguagesPage() {
                   {lang.language_name ? lang.language_name.charAt(0) : "D"}
                 </div>
                 <button
-                    className="delete-data-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteModal(true);
-                      setLanguageDeleting(lang);
-                    }}
-                    style={s.deleteBtn}
-                  >
-                    <Image src={trash} alt="delete" width="18" height="18" />
-                </button> 
+                  className="delete-data-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteModal(true);
+                    setLanguageDeleting(lang);
+                  }}
+                  style={s.deleteBtn}
+                >
+                  <Image src={trash} alt="delete" width="18" height="18" />
+                </button>
               </div>
               <h2 style={s.cardTitle}>{lang.language_name}</h2>
               <p style={s.cardMeta}>Dataset module</p>
@@ -275,7 +275,7 @@ export default function LanguagesPage() {
                 <button onClick={(e) => { e.stopPropagation(); router.push("/recording"); }} className="add-data-btn" style={s.addDataBtn}>
                   Upload Data
                 </button>
-                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -321,7 +321,7 @@ export default function LanguagesPage() {
             </form>
           </div>
         </div>
-      )}      
+      )}
       {/* ERROR MODAL */}
       {showError && (
         <div className="modal-overlay" style={s.overlay} onClick={() => setShowError(false)}>
@@ -344,7 +344,7 @@ export default function LanguagesPage() {
             </button>
           </div>
         </div>
-      )}      
+      )}
       {/* Confirm Delete MODAL */}
       {showDeleteModal && (
         <div className="modal-overlay" style={s.overlay} onClick={() => setShowDeleteModal(false)}>
@@ -361,8 +361,8 @@ export default function LanguagesPage() {
             </p>
             <button
               className="delete-btn2"
-              style={{ ...s.deleteBtn2, marginTop: 8 , marginRight: 20}}
-              onClick={() => {setShowDeleteModal(false); handleDelete(languageDeleting?.lid, languageDeleting?.uid);}}
+              style={{ ...s.deleteBtn2, marginTop: 8, marginRight: 20 }}
+              onClick={() => { setShowDeleteModal(false); handleDelete(languageDeleting?.lid, languageDeleting?.uid); }}
             >
               Delete
             </button>
@@ -496,8 +496,8 @@ const s = {
   },
 
   card: {
-  cursor: 'pointer',
-  transition: '0.2s ease',
+    cursor: 'pointer',
+    transition: '0.2s ease',
   },
 
   cardHover: {
@@ -509,12 +509,12 @@ const s = {
     color: "white",
     border: "none",
     padding: "8px 12px",
-    borderRadius: "6px",    
+    borderRadius: "6px",
     height: '30px',
     display: 'flex',
     width: '30px',
     justifyContent: 'center',
-    alignItems:'center',
+    alignItems: 'center',
     cursor: "pointer",
     transition: 'background 0.2s, transform 0.15s',
   },
@@ -588,12 +588,12 @@ const s = {
     height: '3px',
     background: 'linear-gradient(90deg, #1a1a2e, #e2b96f)',
   },
-  cardHeader:{
-    display:'flex',
+  cardHeader: {
+    display: 'flex',
     justifyContent: 'space-between',
   },
   cardIcon: {
-    width:'44px',
+    width: '44px',
     height: '44px',
     borderRadius: '12px',
     background: 'linear-gradient(135deg, #1a1a2e, #0f3460)',
@@ -684,13 +684,13 @@ const s = {
   },
   fileName: { marginTop: '8px', fontSize: '12px', color: '#059669' },
   modalActions: { display: 'flex', flexDirection: 'column', gap: '10px' },
-/*   saveBtn: {
-    padding: '13px', background: '#1a1a2e', color: '#ffffff',
-    border: 'none', borderRadius: '12px',
-    fontSize: '14.5px', fontWeight: 500, cursor: 'pointer',
-    transition: 'background 0.2s',
-    fontFamily: "'DM Sans', sans-serif",
-  }, */
+  /*   saveBtn: {
+      padding: '13px', background: '#1a1a2e', color: '#ffffff',
+      border: 'none', borderRadius: '12px',
+      fontSize: '14.5px', fontWeight: 500, cursor: 'pointer',
+      transition: 'background 0.2s',
+      fontFamily: "'DM Sans', sans-serif",
+    }, */
   deleteBtn2: {
     padding: '13px', background: '#dc2626', color: '#ffffff',
     border: 'none', borderRadius: '12px',

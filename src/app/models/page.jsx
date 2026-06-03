@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import logo from "../assets/logo.png";
 import trash from "../assets/trash.png";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
 
@@ -28,7 +28,7 @@ export default function ModelsPage() {
   const [showError, setShowError] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdown2Open, setDropdown2Open] = useState(false);
-  const [selectedLangName,setSelectedLangName]=useState(null);
+  const [selectedLangName, setSelectedLangName] = useState(null);
   const dropdownRef = useRef(null);
   const languageRef = useRef(null);
   const [trainModelName, setTrainModelName] = useState("");
@@ -40,66 +40,66 @@ export default function ModelsPage() {
   const socketRef = useRef(null);
 
   const handleTrainSubmit = async (e) => {
-      e.preventDefault();
-      if (!trainModelName.trim()) { toast.error("Model name required"); return; }
+    e.preventDefault();
+    if (!trainModelName.trim()) { toast.error("Model name required"); return; }
 
-      setTraining(true);
-      setTrainingStatus("local-setup");
-      setProgress(0);
+    setTraining(true);
+    setTrainingStatus("local-setup");
+    setProgress(0);
 
-      try {
-          // 1. Initialize session on backend (we only strictly need the modelName for backend logging now)
-          const response = await fetch(`${backendUrl}/models/train`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ modelName: trainModelName, userId })
-          });
+    try {
+      // 1. Initialize session on backend (we only strictly need the modelName for backend logging now)
+      const response = await fetch(`${backendUrl}/models/train`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelName: trainModelName, userId })
+      });
 
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Initialization failed");
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Initialization failed");
 
-          const currentSessionId = result.sessionId;
+      const currentSessionId = result.sessionId;
 
-          // 2. Connect to WebSocket for live updates
-          const socketServer = backendUrl.replace('/api', ''); 
-          const io = (await import("socket.io-client")).default;
-          socketRef.current = io(socketServer);
+      // 2. Connect to WebSocket for live updates
+      const socketServer = backendUrl.replace('/api', '');
+      const io = (await import("socket.io-client")).default;
+      socketRef.current = io(socketServer);
 
-          socketRef.current.on("connect", () => {
-              socketRef.current.emit("join_session", currentSessionId);
-          });
+      socketRef.current.on("connect", () => {
+        socketRef.current.emit("join_session", currentSessionId);
+      });
 
-          socketRef.current.on("training_progress", (data) => {
-              setProgress(data.progress);
-              if (data.status === 'training') setTrainingStatus("training");
-              if (data.status === 'completed') {
-                  setTrainingStatus("completed");
-                  toast.success("Training Finished Successfully!");
-                  setTraining(false);
-                  setShowTrainModal(false);
-                  reget();
-                  socketRef.current.disconnect();
-              }
-              if (data.status === 'failed') {
-                  setTrainingStatus("failed");
-                  toast.error(`Training failed: ${data.errorMessage}`);
-                  setTraining(false);
-                  socketRef.current.disconnect();
-              }
-          });
-
-          // 3. Launch Colab passing ONLY the session ID inside the hash (#) fragment
-          // This keeps it clean and strips out scary API endpoints from the URL bar
-          const colabLink = "https://colab.research.google.com/drive/12pumKVipWAKbLppJ41ji5-ewFlgNYkTx";
-          window.open(`${colabLink}#session=${currentSessionId}`, "_blank");
-          
-          toast.success("Google Colab opened! Run the cells to start training.", { icon: "🚀" });
-
-      } catch (err) {
-          toast.error(err.message || "Connection failed");
+      socketRef.current.on("training_progress", (data) => {
+        setProgress(data.progress);
+        if (data.status === 'training') setTrainingStatus("training");
+        if (data.status === 'completed') {
+          setTrainingStatus("completed");
+          toast.success("Training Finished Successfully!");
           setTraining(false);
-          setTrainingStatus("idle");
-      }
+          setShowTrainModal(false);
+          reget();
+          socketRef.current.disconnect();
+        }
+        if (data.status === 'failed') {
+          setTrainingStatus("failed");
+          toast.error(`Training failed: ${data.errorMessage}`);
+          setTraining(false);
+          socketRef.current.disconnect();
+        }
+      });
+
+      // 3. Launch Colab passing ONLY the session ID inside the hash (#) fragment
+      // This keeps it clean and strips out scary API endpoints from the URL bar
+      const colabLink = "https://colab.research.google.com/drive/12pumKVipWAKbLppJ41ji5-ewFlgNYkTx";
+      window.open(`${colabLink}#session=${currentSessionId}`, "_blank");
+
+      toast.success("Google Colab opened! Run the cells to start training.", { icon: "🚀" });
+
+    } catch (err) {
+      toast.error(err.message || "Connection failed");
+      setTraining(false);
+      setTrainingStatus("idle");
+    }
   };
 
   useEffect(() => {
@@ -124,23 +124,23 @@ export default function ModelsPage() {
       // 1. Get model brief first
       const res = await fetch(`${backendUrl}/models/models`);
       const data = await res.json();
-      console.log("models:", data);
+      //console.log("models:", data);
       setModels(data);
 
       // 2. Get user
       const { data: { user } } = await supabase.auth.getUser();
       setUserEmail(user.email);
       setUserId(user.id);
-      console.log("Authenticated user:", user);
+      //console.log("Authenticated user:", user);
       const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
       const userData = await userRes.json();
       setUser(userData[0]);
-      console.log("Profile info:", userData);
+      //console.log("Profile info:", userData);
 
       //3. Get Languages
       const res2 = await fetch(`${backendUrl}/languages/languages`);
       const data2 = await res2.json();
-      console.log("languages:", data2);
+      //console.log("languages:", data2);
       setLanguages(data2);
 
       setLoading(false);
@@ -153,132 +153,132 @@ export default function ModelsPage() {
     setLoading(true);
     const res = await fetch(`${backendUrl}/models/models`);
     const data = await res.json();
-    console.log("models:", data);
+    //console.log("models:", data);
     setModels(data);
     const res2 = await fetch(`${backendUrl}/languages/languages`);
     const data2 = await res2.json();
-    console.log("languages:", data2);
+    //console.log("languages:", data2);
     setLanguages(data2);
     setLoading(false);
   };
 
-  const handleDelete = async (mid,uid, model_file) => {
-      if (uid !== userId) {
-        setShowError(true);
-        return;
-      }
+  const handleDelete = async (mid, uid, model_file) => {
+    if (uid !== userId) {
+      setShowError(true);
+      return;
+    }
 
-      try {
-          const response = await fetch(`${backendUrl}/models/${mid}`, {
-              method: 'DELETE',
-              headers: {
-                    'Content-Type': 'application/json', // <--- This is the missing piece!
-              },
-              body:JSON.stringify({
-                  model_file: model_file,
-              }),
-          });
-          if (response.ok) {
-              setModels(prev => prev.filter(m => m.mid !== mid));
-              setModelDeleting(null); 
-              toast.success("Model deleted successfully");
-          } else {
-              const err = await response.json();
-              toast.error(`Error: ${err.error}`);
-          }
-      } catch (err) {
-          console.error("Delete failed:", err);
+    try {
+      const response = await fetch(`${backendUrl}/models/${mid}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json', // <--- This is the missing piece!
+        },
+        body: JSON.stringify({
+          model_file: model_file,
+        }),
+      });
+      if (response.ok) {
+        setModels(prev => prev.filter(m => m.mid !== mid));
+        setModelDeleting(null);
+        toast.success("Model deleted successfully");
+      } else {
+        const err = await response.json();
+        toast.error(`Error: ${err.error}`);
       }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
-const extractBaseMidFromPickle = (pickleFile) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const buffer = e.target.result;
-        const bytes = new Uint8Array(buffer);
-        const text = new TextDecoder('latin1').decode(bytes);
+  const extractBaseMidFromPickle = (pickleFile) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const buffer = e.target.result;
+          const bytes = new Uint8Array(buffer);
+          const text = new TextDecoder('latin1').decode(bytes);
 
-        // Find "base_mid" key in the pickle binary text
-        const key = 'base_mid';
-        const keyIndex = text.indexOf(key);
-        if (keyIndex === -1) {
-          resolve(null);
-          return;
-        }
-
-        // After the key, pickle encodes the next string value with a length-prefixed short string
-        // Format: ... \x8c<len_byte><string> ...
-        let i = keyIndex + key.length;
-        while (i < bytes.length) {
-          // 0x8c = SHORT_BINUNICODE opcode (string up to 255 chars)
-          if (bytes[i] === 0x8c) {
-            const strLen = bytes[i + 1];
-            const value = new TextDecoder('utf-8').decode(
-              bytes.slice(i + 2, i + 2 + strLen)
-            );
-            resolve(value);
+          // Find "base_mid" key in the pickle binary text
+          const key = 'base_mid';
+          const keyIndex = text.indexOf(key);
+          if (keyIndex === -1) {
+            resolve(null);
             return;
           }
-          i++;
+
+          // After the key, pickle encodes the next string value with a length-prefixed short string
+          // Format: ... \x8c<len_byte><string> ...
+          let i = keyIndex + key.length;
+          while (i < bytes.length) {
+            // 0x8c = SHORT_BINUNICODE opcode (string up to 255 chars)
+            if (bytes[i] === 0x8c) {
+              const strLen = bytes[i + 1];
+              const value = new TextDecoder('utf-8').decode(
+                bytes.slice(i + 2, i + 2 + strLen)
+              );
+              resolve(value);
+              return;
+            }
+            i++;
+          }
+          resolve(null);
+        } catch {
+          resolve(null);
         }
-        resolve(null);
-      } catch {
-        resolve(null);
-      }
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsArrayBuffer(pickleFile);
-  });
-};
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsArrayBuffer(pickleFile);
+    });
+  };
 
   const handleSave = async (e) => {
-      e.preventDefault();
+    e.preventDefault();
     if (!modelName.trim() || !selectedLang || !pickleFile) {
       toast.error("Please provide a name, select a language, and upload a file.");
       return;
     }
     if (modelName.trim()) {
       try {
-          const base_mid = await extractBaseMidFromPickle(pickleFile);
-          if (!base_mid) {
-            toast.error("Could not extract base_mid from the pickle file.");
-            return;
-          }
-          console.log(base_mid);
-          const response = await fetch(`${backendUrl}/models/addModel`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  userId:userId,
-                  lid: selectedLang,
-                  base_mid:base_mid,
-                  modelName: modelName,
-                  fileContent:pickleFile,
-              })
-          });
-          const result = await response.json();
+        const base_mid = await extractBaseMidFromPickle(pickleFile);
+        if (!base_mid) {
+          toast.error("Could not extract base_mid from the pickle file.");
+          return;
+        }
+        //console.log(base_mid);
+        const response = await fetch(`${backendUrl}/models/addModel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userId,
+            lid: selectedLang,
+            base_mid: base_mid,
+            modelName: modelName,
+            fileContent: pickleFile,
+          })
+        });
+        const result = await response.json();
 
-          if (result.success) {
-              toast.success("Added successfully!");
-              setShowModal(false);
-              setModelName("");
-              setSelectedLang(null);
-              setSelectedLangName(null);
-              setPickleFile(null);
-              reget();
-          } else {
-              throw new Error(result.message);
-          }
+        if (result.success) {
+          toast.success("Added successfully!");
+          setShowModal(false);
+          setModelName("");
+          setSelectedLang(null);
+          setSelectedLangName(null);
+          setPickleFile(null);
+          reget();
+        } else {
+          throw new Error(result.message);
+        }
       } catch (err) {
-          toast.error("ERROR: " + err.message);
+        toast.error("ERROR: " + err.message);
       }
     }
   };
 
   if (loading) return (<div style={s.page}>
-                        <style>{`        
+    <style>{`        
                         .loader-overlay {
                           position: fixed;
                           top: 0;
@@ -304,11 +304,11 @@ const extractBaseMidFromPickle = (pickleFile) => {
                         @keyframes spin { 
                           to { transform: rotate(360deg); } 
                         `}
-                        </style>
-                        <div className="loader-overlay">
-                          <div className="main-spinner"></div>
-                        </div>
-                      </div>);
+    </style>
+    <div className="loader-overlay">
+      <div className="main-spinner"></div>
+    </div>
+  </div>);
 
 
   return (
@@ -391,7 +391,7 @@ const extractBaseMidFromPickle = (pickleFile) => {
             <h1 style={s.pageTitle}>Models</h1>
             <p style={s.pageSubtitle}>{models.length} Models configured</p>
           </div>
-          <div>            
+          <div>
             <button
               className="add-lang-btn"
               style={s.addBtn}
@@ -410,16 +410,16 @@ const extractBaseMidFromPickle = (pickleFile) => {
         </div>
 
         <div style={s.grid}>
-        {models
-          .filter((model) => model.mid !== 0) // Remove models where mid is 0
-          .map((model, i) => (
-            <div key={model.mid || `${model.model_name}-${i}`} className="lang-card" style={{ ...s.card, ...s.cardHover }}>
-              <div style={s.cardAccent} />
-              <div style={s.cardHeader}>
-                <div style={s.cardIcon}>
-                  {model.model_name ? model.model_name.charAt(0) : "M"}
-                </div>
-                <button
+          {models
+            .filter((model) => model.mid !== 0) // Remove models where mid is 0
+            .map((model, i) => (
+              <div key={model.mid || `${model.model_name}-${i}`} className="lang-card" style={{ ...s.card, ...s.cardHover }}>
+                <div style={s.cardAccent} />
+                <div style={s.cardHeader}>
+                  <div style={s.cardIcon}>
+                    {model.model_name ? model.model_name.charAt(0) : "M"}
+                  </div>
+                  <button
                     className="delete-data-btn"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -429,17 +429,17 @@ const extractBaseMidFromPickle = (pickleFile) => {
                     style={s.deleteBtn}
                   >
                     <Image src={trash} alt="delete" width="18" height="18" />
-                </button> 
-              </div>
-              <h2 style={s.cardTitle}>{model.model_name}</h2>
-              <p style={s.cardMeta}>{model.language_name}</p>
-              <div style={s.cardButtons}>
-                <button onClick={(e) => { e.stopPropagation(); router.push(`/models/${model.mid}?modelId=${model.mid}`); }} className="add-data-btn" style={s.addDataBtn}>
-                  Fine tune
-                </button>
+                  </button>
                 </div>
-            </div>
-          ))}
+                <h2 style={s.cardTitle}>{model.model_name}</h2>
+                <p style={s.cardMeta}>{model.language_name}</p>
+                <div style={s.cardButtons}>
+                  <button onClick={(e) => { e.stopPropagation(); router.push(`/models/${model.mid}?modelId=${model.mid}`); }} className="add-data-btn" style={s.addDataBtn}>
+                    Fine tune
+                  </button>
+                </div>
+              </div>
+            ))}
         </div>
       </main>
 
@@ -487,21 +487,21 @@ const extractBaseMidFromPickle = (pickleFile) => {
               <div style={s.fieldGroup}>
                 <label style={s.label}>Language</label>
                 {/* Use the NEW ref here */}
-                <div style={s.userArea} ref={languageRef}> 
-                  <button style={{...s.userPill, minWidth: "200px", justifyContent: "space-between"}} onClick={() => setDropdown2Open(o => !o)}>
-                    <span style={s.userName}>{selectedLangName? selectedLangName : "Select a language"}</span>
+                <div style={s.userArea} ref={languageRef}>
+                  <button style={{ ...s.userPill, minWidth: "200px", justifyContent: "space-between" }} onClick={() => setDropdown2Open(o => !o)}>
+                    <span style={s.userName}>{selectedLangName ? selectedLangName : "Select a language"}</span>
                     <span>{dropdown2Open ? '▲' : '▼'}</span>
                   </button>
-                  
+
                   {dropdown2Open && (
                     <div style={s.dropdown2}>
                       {languages.map(lang => (
                         //<div key={lang.lid} style={s.dropdownDivider}>
                         <div key={lang.lid}>
                           {/* FIXED: Added arrow function wrapper */}
-                          <button 
-                            onClick={() => {setSelectedLang(lang.lid); setDropdown2Open(false); setSelectedLangName(lang.language_name)}} 
-                            className="dropdown-item" 
+                          <button
+                            onClick={() => { setSelectedLang(lang.lid); setDropdown2Open(false); setSelectedLangName(lang.language_name) }}
+                            className="dropdown-item"
                             style={s.dropdownItem}
                           >
                             {lang.language_name}
@@ -556,7 +556,7 @@ const extractBaseMidFromPickle = (pickleFile) => {
                 <h2 style={s.modalTitle}>Train New Model</h2>
                 <p style={s.modalSub}>Select the directory containing your labeled training data.</p>
               </div>
-              <button style={s.closeBtn} onClick={() => {setModelName(""); setShowTrainModal(false);}}>✕</button>
+              <button style={s.closeBtn} onClick={() => { setModelName(""); setShowTrainModal(false); }}>✕</button>
             </div>
 
             <form style={s.form} onSubmit={e => e.preventDefault()}>
@@ -596,12 +596,12 @@ const extractBaseMidFromPickle = (pickleFile) => {
                       </span>
                       <span style={{ color: '#6366f1' }}>{progress}%</span>
                     </div>
-                    
+
                     {/* Progress Track */}
                     <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{ width: `${progress}%`, height: '100%', background: '#6366f1', transition: 'width 0.4s ease' }} />
                     </div>
-                    
+
                     <p style={{ fontSize: '11px', color: '#718096', marginTop: '6px', textAlign: 'center' }}>
                       Do not close this page or your Colab window during processing.
                     </p>
@@ -611,7 +611,7 @@ const extractBaseMidFromPickle = (pickleFile) => {
             </form>
           </div>
         </div>
-      )}      
+      )}
       {/* ERROR MODAL */}
       {showError && (
         <div className="modal-overlay" style={s.overlay} onClick={() => setShowError(false)}>
@@ -634,7 +634,7 @@ const extractBaseMidFromPickle = (pickleFile) => {
             </button>
           </div>
         </div>
-      )}  
+      )}
       {/* Confirm Delete MODAL */}
       {showDeleteModal && (
         <div className="modal-overlay" style={s.overlay} onClick={() => setShowDeleteModal(false)}>
@@ -651,8 +651,8 @@ const extractBaseMidFromPickle = (pickleFile) => {
             </p>
             <button
               className="delete-btn2"
-              style={{ ...s.deleteBtn2, marginTop: 8 , marginRight: 20}}
-              onClick={() => {setShowDeleteModal(false); handleDelete(modelDeleting?.mid, modelDeleting?.uid, modelDeleting?.model_file);}}
+              style={{ ...s.deleteBtn2, marginTop: 8, marginRight: 20 }}
+              onClick={() => { setShowDeleteModal(false); handleDelete(modelDeleting?.mid, modelDeleting?.uid, modelDeleting?.model_file); }}
             >
               Delete
             </button>
@@ -799,8 +799,8 @@ const s = {
     fontFamily: "'DM Sans', sans-serif",
   },
   card: {
-  cursor: 'pointer',
-  transition: '0.2s ease',
+    cursor: 'pointer',
+    transition: '0.2s ease',
   },
 
   cardHover: {
@@ -812,12 +812,12 @@ const s = {
     color: "white",
     border: "none",
     padding: "8px 12px",
-    borderRadius: "6px",    
+    borderRadius: "6px",
     height: '30px',
     display: 'flex',
     width: '30px',
     justifyContent: 'center',
-    alignItems:'center',
+    alignItems: 'center',
     cursor: "pointer",
     transition: 'background 0.2s, transform 0.15s',
   },
@@ -866,7 +866,7 @@ const s = {
     letterSpacing: '0.3px',
     transition: 'background 0.2s, transform 0.15s',
     fontFamily: "'DM Sans', sans-serif",
-    margin:'20px',
+    margin: '20px',
   },
 
   /* GRID */
@@ -892,12 +892,12 @@ const s = {
     height: '3px',
     background: 'linear-gradient(90deg, #1a1a2e, #e2b96f)',
   },
-  cardHeader:{
-    display:'flex',
+  cardHeader: {
+    display: 'flex',
     justifyContent: 'space-between',
   },
   cardIcon: {
-    width:'44px',
+    width: '44px',
     height: '44px',
     borderRadius: '12px',
     background: 'linear-gradient(135deg, #1a1a2e, #0f3460)',
@@ -1014,7 +1014,7 @@ const s = {
     transition: 'background 0.2s',
     fontFamily: "'DM Sans', sans-serif",
   },
-    overlay: {
+  overlay: {
     position: 'fixed', inset: 0,
     background: 'rgba(10,15,30,0.50)',
     backdropFilter: 'blur(6px)',
@@ -1085,7 +1085,7 @@ const s = {
     fontSize: '13.5px',
     color: '#4a5568',
     transition: 'background 0.15s, color 0.15s',
-    cursor:'pointer',
+    cursor: 'pointer',
   },
   fileArea: {
     padding: '14px 16px',

@@ -11,35 +11,35 @@ import * as THREE from 'three';
 // ─── Sensor readings panel ───────────────────────────────────────────────────
 // All pad channel metadata mirrored from the ESP firmware padDefs array.
 const FLEX_META = [
-  { key: 'idx_mcp', label: 'Index MCP',  color: '#60a5fa' },
-  { key: 'idx_pcp', label: 'Index PIP',  color: '#93c5fd' },
+  { key: 'idx_mcp', label: 'Index MCP', color: '#60a5fa' },
+  { key: 'idx_pcp', label: 'Index PIP', color: '#93c5fd' },
   { key: 'mid_mcp', label: 'Middle MCP', color: '#4ade80' },
   { key: 'mid_pcp', label: 'Middle PIP', color: '#86efac' },
-  { key: 'rng_mcp', label: 'Ring MCP',   color: '#f472b6' },
-  { key: 'rng_pcp', label: 'Ring PIP',   color: '#f9a8d4' },
-  { key: 'pky_mcp', label: 'Pinky MCP',  color: '#a78bfa' },
-  { key: 'pky_pcp', label: 'Pinky PIP',  color: '#c4b5fd' },
+  { key: 'rng_mcp', label: 'Ring MCP', color: '#f472b6' },
+  { key: 'rng_pcp', label: 'Ring PIP', color: '#f9a8d4' },
+  { key: 'pky_mcp', label: 'Pinky MCP', color: '#a78bfa' },
+  { key: 'pky_pcp', label: 'Pinky PIP', color: '#c4b5fd' },
 ];
 const FRONT_ZONE_NAMES = ['Bottom (10Ω)', 'Lower-Mid (330Ω)', 'Upper-Mid (470Ω)', 'Tip (1kΩ)', 'Touch (5kΩ)'];
-const SIDE_ZONE_NAMES  = ['Side-High', 'Side-Mid', 'Two-Fingers'];
-const TOP_ZONE_NAMES   = ['Index', 'Middle', 'Ring', 'Pinky'];
+const SIDE_ZONE_NAMES = ['Side-High', 'Side-Mid', 'Two-Fingers'];
+const TOP_ZONE_NAMES = ['Index', 'Middle', 'Ring', 'Pinky'];
 const PAD_META = [
-  { key: 'PAD_FRONT0', label: 'Front: Index',  color: '#60a5fa', zones: FRONT_ZONE_NAMES },
+  { key: 'PAD_FRONT0', label: 'Front: Index', color: '#60a5fa', zones: FRONT_ZONE_NAMES },
   { key: 'PAD_FRONT1', label: 'Front: Middle', color: '#4ade80', zones: FRONT_ZONE_NAMES },
-  { key: 'PAD_FRONT2', label: 'Front: Ring',   color: '#f472b6', zones: FRONT_ZONE_NAMES },
-  { key: 'PAD_FRONT3', label: 'Front: Pinky',  color: '#a78bfa', zones: FRONT_ZONE_NAMES },
-  { key: 'PAD_TOP',    label: 'Top Palm',       color: '#e2b96f', zones: TOP_ZONE_NAMES  },
-  { key: 'PAD_UNUSED5',label: 'Unused 5',       color: '#4a5568', zones: []              },
-  { key: 'PAD_SIDE6',  label: 'Side: Middle',   color: '#4ade80', zones: SIDE_ZONE_NAMES },
-  { key: 'PAD_SIDE7',  label: 'Side: Ring',     color: '#f472b6', zones: SIDE_ZONE_NAMES },
-  { key: 'PAD_SIDE8',  label: 'Side: Pinky',    color: '#a78bfa', zones: SIDE_ZONE_NAMES },
-  { key: 'PAD_SIDE9',  label: 'Side: Index',    color: '#60a5fa', zones: SIDE_ZONE_NAMES },
-  { key: 'PAD_TEST10', label: 'Test 10',         color: '#4a5568', zones: []              },
-  { key: 'PAD_TEST11', label: 'Test 11',         color: '#4a5568', zones: []              },
-  { key: 'PAD_TEST12', label: 'Test 12',         color: '#4a5568', zones: []              },
-  { key: 'PAD_TEST13', label: 'Test 13',         color: '#4a5568', zones: []              },
-  { key: 'PAD_TEST14', label: 'Test 14',         color: '#4a5568', zones: []              },
-  { key: 'PAD_TEST15', label: 'Test 15',         color: '#4a5568', zones: []              },
+  { key: 'PAD_FRONT2', label: 'Front: Ring', color: '#f472b6', zones: FRONT_ZONE_NAMES },
+  { key: 'PAD_FRONT3', label: 'Front: Pinky', color: '#a78bfa', zones: FRONT_ZONE_NAMES },
+  { key: 'PAD_TOP', label: 'Top Palm', color: '#e2b96f', zones: TOP_ZONE_NAMES },
+  { key: 'PAD_UNUSED5', label: 'Unused 5', color: '#4a5568', zones: [] },
+  { key: 'PAD_SIDE6', label: 'Side: Middle', color: '#4ade80', zones: SIDE_ZONE_NAMES },
+  { key: 'PAD_SIDE7', label: 'Side: Ring', color: '#f472b6', zones: SIDE_ZONE_NAMES },
+  { key: 'PAD_SIDE8', label: 'Side: Pinky', color: '#a78bfa', zones: SIDE_ZONE_NAMES },
+  { key: 'PAD_SIDE9', label: 'Side: Index', color: '#60a5fa', zones: SIDE_ZONE_NAMES },
+  { key: 'PAD_TEST10', label: 'Test 10', color: '#4a5568', zones: [] },
+  { key: 'PAD_TEST11', label: 'Test 11', color: '#4a5568', zones: [] },
+  { key: 'PAD_TEST12', label: 'Test 12', color: '#4a5568', zones: [] },
+  { key: 'PAD_TEST13', label: 'Test 13', color: '#4a5568', zones: [] },
+  { key: 'PAD_TEST14', label: 'Test 14', color: '#4a5568', zones: [] },
+  { key: 'PAD_TEST15', label: 'Test 15', color: '#4a5568', zones: [] },
 ];
 
 const FINGER_LABELS = [
@@ -229,11 +229,11 @@ function useGloveWebSocket(ipAddress, onFrame) {
     wsRef.current = socket;
 
     socket.onopen = () => {
-      console.log('[Glove] Connected');
+      //console.log('[Glove] Connected');
       setGloveState(prev => ({ ...prev, connected: true }));
     };
     socket.onclose = () => {
-      console.log('[Glove] Disconnected');
+      //console.log('[Glove] Disconnected');
       setGloveState(prev => ({ ...prev, connected: false }));
       wsRef.current = null;
     };
@@ -392,7 +392,7 @@ function SensorReadingsPanel({ frame }) {
             <div style={sp.sectionTitle}>Flex Sensors</div>
             {FLEX_META.map(({ key, label, color }) => {
               const curl = flex[key]?.curl ?? 0;
-              const raw  = flex[key]?.raw  ?? 0;
+              const raw = flex[key]?.raw ?? 0;
               return (
                 <div key={key} style={sp.row}>
                   <div style={sp.dot(color)} />
@@ -412,8 +412,8 @@ function SensorReadingsPanel({ frame }) {
             <div style={sp.sectionTitle}>Contact Pads</div>
             {PAD_META.map(({ key, label, color, zones }) => {
               const pad = padMap[key];
-              const z   = pad?.z ?? -1;
-              const r   = pad?.r ?? 0;
+              const z = pad?.z ?? -1;
+              const r = pad?.r ?? 0;
               const active = z !== -1;
               return (
                 <div key={key} style={{ ...sp.row, flexWrap: 'wrap', rowGap: 3, alignItems: 'flex-start', paddingBottom: zones.length ? 4 : 0 }}>
@@ -504,9 +504,9 @@ function RecordingModal({
   calibrate,
 }) {
   const frameCount = frames.length;
-  const duration   = (frameCount / 60).toFixed(1);
-  const trimStart  = trimRange[0];
-  const trimEnd    = trimRange[1];
+  const duration = (frameCount / 60).toFixed(1);
+  const trimStart = trimRange[0];
+  const trimEnd = trimRange[1];
   const trimmedCount = Math.max(0, Math.floor(((trimEnd - trimStart) / 100) * frameCount));
 
   // Playback of recorded frames when stopped
@@ -635,7 +635,7 @@ export default function LegacyGloveCapture() {
   const ESP_IP = "192.168.1.8";
 
   // Recording state
-  const [isRecording, setIsRecording]     = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [recordedFrames, setRecordedFrames] = useState([]);
   const isRecordingRef = useRef(false); // mirrors state for use inside WS closure
 
@@ -677,16 +677,16 @@ export default function LegacyGloveCapture() {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
-  const [loading, setLoading] =useState(false);
+  const [loading, setLoading] = useState(false);
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
   // Calibration ref – set to true to trigger reset inside HandModel
   const calibrateRef = useRef(false);
 
   // Modal state
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [signLabel, setSignLabel]     = useState('');
-  const [signInput, setSignInput]     = useState('');
-  const [trimRange, setTrimRange]     = useState([0, 100]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [signLabel, setSignLabel] = useState('');
+  const [signInput, setSignInput] = useState('');
+  const [trimRange, setTrimRange] = useState([0, 100]);
 
   const [restRotationR, setRestRotationR] = useState([-3.15, 2.29, 3.15]);
   const [restRotationL, setRestRotationL] = useState([-3.15, -2.29, 3.15]);
@@ -709,20 +709,20 @@ export default function LegacyGloveCapture() {
   const rawWaiterRef = useRef(null);
 
   // Helper to update a single axis
-  const setR = (axis, val) => setRestRotationR(prev => { const n=[...prev]; n[axis]=val; return n; });
-  const setL = (axis, val) => setRestRotationL(prev => { const n=[...prev]; n[axis]=val; return n; });
+  const setR = (axis, val) => setRestRotationR(prev => { const n = [...prev]; n[axis] = val; return n; });
+  const setL = (axis, val) => setRestRotationL(prev => { const n = [...prev]; n[axis] = val; return n; });
 
   // Saved signs (one submission = many signs)
-  const [signs, setSigns]             = useState([]); // [{label, frames, trimStart, trimEnd}]
+  const [signs, setSigns] = useState([]); // [{label, frames, trimStart, trimEnd}]
   const [downloadStatus, setDownloadStatus] = useState(null);
 
   // Nav dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef  = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Stats
   const frameCount = recordedFrames.length;
-  const duration   = (frameCount / 60).toFixed(1);
+  const duration = (frameCount / 60).toFixed(1);
 
   const axisKnots = knotsByAxis[calFinger][calAxis];
   const nextStepIdx = axisKnots.findIndex((val) => !Number.isFinite(val));
@@ -873,24 +873,24 @@ export default function LegacyGloveCapture() {
   }, []);
 
   useEffect(() => {
-      async function init() {
-        setLoading(true);
+    async function init() {
+      setLoading(true);
 
-        // Get user
-        const { data: { user } } = await supabase.auth.getUser();
-        setUserEmail(user.email);
-        setUserId(user.id);
-        console.log("Authenticated user:", user);
-        const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
-        const userData = await userRes.json();
-        setUser(userData[0]);
-        console.log("Profile info:", userData);
+      // Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserEmail(user.email);
+      setUserId(user.id);
+      //console.log("Authenticated user:", user);
+      const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
+      const userData = await userRes.json();
+      setUser(userData[0]);
+      //console.log("Profile info:", userData);
 
-        setLoading(false);
-      }
+      setLoading(false);
+    }
 
-      init();
-    }, [backendUrl]);
+    init();
+  }, [backendUrl]);
 
   useEffect(() => {
     if (CAL_FINGER_DEFAULTS[calFinger][calAxis] === -1) {
@@ -925,7 +925,7 @@ export default function LegacyGloveCapture() {
 
   const handleSaveSign = () => {
     const startIdx = Math.floor((trimRange[0] / 100) * recordedFrames.length);
-    const endIdx   = Math.floor((trimRange[1] / 100) * recordedFrames.length);
+    const endIdx = Math.floor((trimRange[1] / 100) * recordedFrames.length);
     const trimmedFrames = recordedFrames.slice(startIdx, endIdx);
 
     setSigns(prev => [...prev, {
@@ -941,50 +941,50 @@ export default function LegacyGloveCapture() {
     setRecordedFrames([]);
     setSignInput('');
   };
-const handleDownload = () => {
-  if (signs.length === 0) return;
+  const handleDownload = () => {
+    if (signs.length === 0) return;
 
-  try {
-    // 1. Convert the signs object/array to a JSON string
-    // The arguments (null, 2) add pretty-printing (indentation)
-    const jsonString = JSON.stringify(signs, null, 2);
+    try {
+      // 1. Convert the signs object/array to a JSON string
+      // The arguments (null, 2) add pretty-printing (indentation)
+      const jsonString = JSON.stringify(signs, null, 2);
 
-    // 2. Create a Blob with the JSON data
-    const blob = new Blob([jsonString], { type: 'application/json' });
+      // 2. Create a Blob with the JSON data
+      const blob = new Blob([jsonString], { type: 'application/json' });
 
-    // 3. Create an object URL for the Blob
-    const url = URL.createObjectURL(blob);
+      // 3. Create an object URL for the Blob
+      const url = URL.createObjectURL(blob);
 
-    // 4. Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'signs-data.json'; // The filename for the user
+      // 4. Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'signs-data.json'; // The filename for the user
 
-    // 5. Append to body, click it, and remove it
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // 5. Append to body, click it, and remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-    // 6. Clean up the URL object to free up memory
-    URL.revokeObjectURL(url);
+      // 6. Clean up the URL object to free up memory
+      URL.revokeObjectURL(url);
 
-    // Update your existing UI states
-    console.log("download submission:", signs);
-    setDownloadStatus('success');
-    setTimeout(() => setDownloadStatus(null), 3000);
-    setSigns([]);
+      // Update your existing UI states
+      //console.log("download submission:", signs);
+      setDownloadStatus('success');
+      setTimeout(() => setDownloadStatus(null), 3000);
+      setSigns([]);
 
-  } catch (error) {
-    console.error("Download failed:", error);
-    setDownloadStatus('error');
-  }
-};
+    } catch (error) {
+      console.error("Download failed:", error);
+      setDownloadStatus('error');
+    }
+  };
 
   const handleRemoveSign = (idx) => {
     setSigns(prev => prev.filter((_, i) => i !== idx));
   };
-if (loading) return (<div style={s.page}>
-                        <style>{`        
+  if (loading) return (<div style={s.page}>
+    <style>{`        
                           .loader-overlay {
                             position: fixed;
                             top: 0;
@@ -1011,11 +1011,11 @@ if (loading) return (<div style={s.page}>
                             to { transform: rotate(360deg); } 
                           }
                         `}
-                        </style>
-                        <div className="loader-overlay">
-                          <div className="main-spinner"></div>
-                        </div>
-                      </div>);
+    </style>
+    <div className="loader-overlay">
+      <div className="main-spinner"></div>
+    </div>
+  </div>);
 
   return (
     <div style={s.page}>
@@ -1171,168 +1171,168 @@ if (loading) return (<div style={s.page}>
               {calError && <div style={s.calError}>{calError}</div>}
 
               <div style={s.calRow}>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.TARE_IMU)}
-                      disabled={!isConnected}
-                    >
-                      Tare IMU
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.START_BOOT_CAL)}
-                      disabled={!isConnected}
-                    >
-                      Boot Cal
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.START_MAG_CAL)}
-                      disabled={!isConnected}
-                    >
-                      Mag Cal
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.END_MAG_CAL)}
-                      disabled={!isConnected}
-                    >
-                      End Mag
-                    </button>
-                  </div>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.TARE_IMU)}
+                  disabled={!isConnected}
+                >
+                  Tare IMU
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.START_BOOT_CAL)}
+                  disabled={!isConnected}
+                >
+                  Boot Cal
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.START_MAG_CAL)}
+                  disabled={!isConnected}
+                >
+                  Mag Cal
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.END_MAG_CAL)}
+                  disabled={!isConnected}
+                >
+                  End Mag
+                </button>
+              </div>
 
-                  <div style={s.calRow}>
-                    <label style={s.calLabel}>Finger</label>
-                    <select
-                      style={s.calSelect}
-                      value={calFinger}
-                      onChange={(e) => setCalFinger(parseInt(e.target.value, 10))}
-                    >
-                      {CAL_FINGER_NAMES.map((name, idx) => (
-                        <option key={name} value={idx}>{name}</option>
-                      ))}
-                    </select>
-                    <label style={s.calLabel}>Axis</label>
-                    <select
-                      style={s.calSelect}
-                      value={calAxis}
-                      onChange={(e) => setCalAxis(parseInt(e.target.value, 10))}
-                    >
-                      {CAL_AXIS_NAMES.map((name, idx) => (
-                        <option key={name} value={idx} disabled={CAL_FINGER_DEFAULTS[calFinger][idx] === -1}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div style={s.calRow}>
+                <label style={s.calLabel}>Finger</label>
+                <select
+                  style={s.calSelect}
+                  value={calFinger}
+                  onChange={(e) => setCalFinger(parseInt(e.target.value, 10))}
+                >
+                  {CAL_FINGER_NAMES.map((name, idx) => (
+                    <option key={name} value={idx}>{name}</option>
+                  ))}
+                </select>
+                <label style={s.calLabel}>Axis</label>
+                <select
+                  style={s.calSelect}
+                  value={calAxis}
+                  onChange={(e) => setCalAxis(parseInt(e.target.value, 10))}
+                >
+                  {CAL_AXIS_NAMES.map((name, idx) => (
+                    <option key={name} value={idx} disabled={CAL_FINGER_DEFAULTS[calFinger][idx] === -1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <div style={s.calSteps}>
-                    {CALIBRATION_STEPS.map((step, idx) => {
-                      const value = axisKnots[idx];
-                      const done = Number.isFinite(value);
-                      const active = idx === nextStepIdx;
-                      return (
-                        <div
-                          key={step.pct}
-                          style={{
-                            ...s.calStep,
-                            ...(done ? s.calStepDone : null),
-                            ...(active ? s.calStepActive : null),
-                          }}
-                        >
-                          <span>{step.label}</span>
-                          <span>{done ? value.toFixed(3) : '---'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div style={s.calSteps}>
+                {CALIBRATION_STEPS.map((step, idx) => {
+                  const value = axisKnots[idx];
+                  const done = Number.isFinite(value);
+                  const active = idx === nextStepIdx;
+                  return (
+                    <div
+                      key={step.pct}
+                      style={{
+                        ...s.calStep,
+                        ...(done ? s.calStepDone : null),
+                        ...(active ? s.calStepActive : null),
+                      }}
+                    >
+                      <span>{step.label}</span>
+                      <span>{done ? value.toFixed(3) : '---'}</span>
+                    </div>
+                  );
+                })}
+              </div>
 
-                  <div style={s.calRow}>
-                    <button
-                      style={s.calBtn}
-                      onClick={captureStep}
-                      disabled={!isConnected || captureBusy || !axisAvailable || nextStepIdx === -1}
-                    >
-                      {captureBusy ? `Capturing ${captureProgress}%` : 'Capture Step'}
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={resetAxis}
-                      disabled={captureBusy}
-                    >
-                      Reset Axis
-                    </button>
-                  </div>
+              <div style={s.calRow}>
+                <button
+                  style={s.calBtn}
+                  onClick={captureStep}
+                  disabled={!isConnected || captureBusy || !axisAvailable || nextStepIdx === -1}
+                >
+                  {captureBusy ? `Capturing ${captureProgress}%` : 'Capture Step'}
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={resetAxis}
+                  disabled={captureBusy}
+                >
+                  Reset Axis
+                </button>
+              </div>
 
-                  <div style={s.calRow}>
-                    <button
-                      style={s.calBtn}
-                      onClick={sendKnots}
-                      disabled={!isConnected || captureBusy || !axisComplete}
-                    >
-                      Send Knots
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.SAVE_CAL)}
-                      disabled={!isConnected}
-                    >
-                      Save Cal
-                    </button>
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={() => runCommand(CMD.LOAD_CAL)}
-                      disabled={!isConnected}
-                    >
-                      Load Cal
-                    </button>
-                  </div>
+              <div style={s.calRow}>
+                <button
+                  style={s.calBtn}
+                  onClick={sendKnots}
+                  disabled={!isConnected || captureBusy || !axisComplete}
+                >
+                  Send Knots
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.SAVE_CAL)}
+                  disabled={!isConnected}
+                >
+                  Save Cal
+                </button>
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={() => runCommand(CMD.LOAD_CAL)}
+                  disabled={!isConnected}
+                >
+                  Load Cal
+                </button>
+              </div>
 
-                  <div style={s.calRow}>
-                    <label style={s.calLabel}>Samples</label>
-                    <input
-                      type="number"
-                      min="1"
-                      style={s.calInput}
-                      value={sampleCount}
-                      onChange={(e) => setSampleCount(e.target.value)}
-                    />
-                    <label style={s.calLabel}>Delay (ms)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      style={s.calInput}
-                      value={sampleDelayMs}
-                      onChange={(e) => setSampleDelayMs(e.target.value)}
-                    />
-                  </div>
+              <div style={s.calRow}>
+                <label style={s.calLabel}>Samples</label>
+                <input
+                  type="number"
+                  min="1"
+                  style={s.calInput}
+                  value={sampleCount}
+                  onChange={(e) => setSampleCount(e.target.value)}
+                />
+                <label style={s.calLabel}>Delay (ms)</label>
+                <input
+                  type="number"
+                  min="0"
+                  style={s.calInput}
+                  value={sampleDelayMs}
+                  onChange={(e) => setSampleDelayMs(e.target.value)}
+                />
+              </div>
 
-                  <div style={s.calRow}>
-                    <label style={s.calLabel}>Coupling</label>
-                    <input
-                      type="text"
-                      style={s.calInputWide}
-                      value={couplingInput}
-                      onChange={(e) => setCouplingInput(e.target.value)}
-                      placeholder="c0,c1,c2,c3"
-                    />
-                    <button
-                      style={s.calBtnSecondary}
-                      onClick={sendCoupling}
-                      disabled={!isConnected}
-                    >
-                      Send
-                    </button>
-                  </div>
+              <div style={s.calRow}>
+                <label style={s.calLabel}>Coupling</label>
+                <input
+                  type="text"
+                  style={s.calInputWide}
+                  value={couplingInput}
+                  onChange={(e) => setCouplingInput(e.target.value)}
+                  placeholder="c0,c1,c2,c3"
+                />
+                <button
+                  style={s.calBtnSecondary}
+                  onClick={sendCoupling}
+                  disabled={!isConnected}
+                >
+                  Send
+                </button>
+              </div>
 
-                  <div style={s.calRawGrid}>
-                    {rawVoltages.map((val, idx) => (
-                      <div key={`raw-${idx}`} style={s.calRawCell}>
-                        <span>#{idx}</span>
-                        <span>{Number.isFinite(val) ? val.toFixed(3) : '---'}</span>
-                      </div>
-                    ))}
+              <div style={s.calRawGrid}>
+                {rawVoltages.map((val, idx) => (
+                  <div key={`raw-${idx}`} style={s.calRawCell}>
+                    <span>#{idx}</span>
+                    <span>{Number.isFinite(val) ? val.toFixed(3) : '---'}</span>
                   </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1428,85 +1428,85 @@ if (loading) return (<div style={s.page}>
 const s = {
   page: { minHeight: '100vh', background: '#0d0f1a', fontFamily: "'DM Sans', sans-serif", color: '#e2e8f0', display: 'flex', flexDirection: 'column' },
 
-  nav: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', height:60, background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.07)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:20 },
-  navBrand: { display:'flex', alignItems:'center', gap:10 },
-  navName: { fontFamily:"'Playfair Display', serif", fontSize:18, fontWeight:600, color:'#ffffff', letterSpacing:'0.5px' },
-  navDivider: { color:'rgba(255,255,255,0.15)', fontSize:16 },
-  navSub: { fontSize:13, color:'#a0aec0', fontWeight:300 },
-  navRight: { position:'relative' },
-  userPill: { display:'flex', alignItems:'center', gap:9, padding:'5px 12px 5px 5px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:100, cursor:'pointer' },
-  avatar: { width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg, #0f3460, #e2b96f)', color:'#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, letterSpacing:'0.5px', flexShrink:0 },
-  userName: { fontSize:13, fontWeight:500, color:'#e2e8f0' },
-  chevron: { fontSize:10, color:'#a0aec0' },
-  dropdown: { position:'absolute', top:'calc(100% + 8px)', right:0, background:'#1a1f35', borderRadius:16, boxShadow:'0 16px 48px rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.08)', minWidth:200, overflow:'hidden', animation:'slideDown 0.15s ease', zIndex:100 },
-  ddHeader: { display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'rgba(255,255,255,0.03)' },
-  ddName: { fontSize:13, fontWeight:500, color:'#e2e8f0' },
-  ddEmail: { fontSize:11, color:'#718096' },
-  ddDivider: { height:1, background:'rgba(255,255,255,0.06)' },
-  ddItem: { display:'block', width:'100%', padding:'10px 16px', background:'transparent', border:'none', textAlign:'left', fontSize:13, color:'#a0aec0', cursor:'pointer', transition:'background 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 60, background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 20 },
+  navBrand: { display: 'flex', alignItems: 'center', gap: 10 },
+  navName: { fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 600, color: '#ffffff', letterSpacing: '0.5px' },
+  navDivider: { color: 'rgba(255,255,255,0.15)', fontSize: 16 },
+  navSub: { fontSize: 13, color: '#a0aec0', fontWeight: 300 },
+  navRight: { position: 'relative' },
+  userPill: { display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 5px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 100, cursor: 'pointer' },
+  avatar: { width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #0f3460, #e2b96f)', color: '#1a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.5px', flexShrink: 0 },
+  userName: { fontSize: 13, fontWeight: 500, color: '#e2e8f0' },
+  chevron: { fontSize: 10, color: '#a0aec0' },
+  dropdown: { position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#1a1f35', borderRadius: 16, boxShadow: '0 16px 48px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', minWidth: 200, overflow: 'hidden', animation: 'slideDown 0.15s ease', zIndex: 100 },
+  ddHeader: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'rgba(255,255,255,0.03)' },
+  ddName: { fontSize: 13, fontWeight: 500, color: '#e2e8f0' },
+  ddEmail: { fontSize: 11, color: '#718096' },
+  ddDivider: { height: 1, background: 'rgba(255,255,255,0.06)' },
+  ddItem: { display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: 13, color: '#a0aec0', cursor: 'pointer', transition: 'background 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  body: { flex:1, display:'flex', gap:24, padding:28, maxWidth:1400, margin:'0 auto', width:'100%' },
-  leftCol: { flex:1, display:'flex', flexDirection:'column', gap:20, minWidth:0 },
-  rightCol: { width:340, flexShrink:0, display:'flex', flexDirection:'column', gap:16 },
+  body: { flex: 1, display: 'flex', gap: 24, padding: 28, maxWidth: 1400, margin: '0 auto', width: '100%' },
+  leftCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 },
+  rightCol: { width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 },
 
-  titleRow: { display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
-  title: { fontFamily:"'Playfair Display', serif", fontSize:26, fontWeight:600, color:'#ffffff', marginBottom:4 },
-  subtitle: { fontSize:13, color:'#718096', fontWeight:300 },
+  titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 600, color: '#ffffff', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#718096', fontWeight: 300 },
 
-  viewport: { flex:1, minHeight:400, background:'linear-gradient(145deg, #0a0c18, #111827)', borderRadius:20, border:'1px solid rgba(255,255,255,0.06)', boxShadow:'inset 0 0 60px rgba(0,0,0,0.4)' },
-  viewportLabel: { position:'absolute', top:14, left:18, zIndex:2, fontSize:11, fontWeight:500, color:'#4a5568', letterSpacing:'1px', textTransform:'uppercase' },
-  viewportOverlay: { position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' },
-  viewportIcon: { fontSize:40, marginBottom:12, opacity:0.3 },
-  viewportHint: { fontSize:13, color:'#4a5568' },
+  viewport: { flex: 1, minHeight: 400, background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)' },
+  viewportLabel: { position: 'absolute', top: 14, left: 18, zIndex: 2, fontSize: 11, fontWeight: 500, color: '#4a5568', letterSpacing: '1px', textTransform: 'uppercase' },
+  viewportOverlay: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
+  viewportIcon: { fontSize: 40, marginBottom: 12, opacity: 0.3 },
+  viewportHint: { fontSize: 13, color: '#4a5568' },
 
-  controlRow: { display:'flex', gap:12, alignItems:'center' },
-  calibBtn: { display:'flex', alignItems:'center', gap:8, padding:'11px 20px', background:'rgba(226,185,111,0.08)', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
-  connectedBadge: { display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#34d399' },
-  connDot: { width:8, height:8, borderRadius:'50%', background:'#34d399', display:'inline-block' },
+  controlRow: { display: 'flex', gap: 12, alignItems: 'center' },
+  calibBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: 'rgba(226,185,111,0.08)', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
+  connectedBadge: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#34d399' },
+  connDot: { width: 8, height: 8, borderRadius: '50%', background: '#34d399', display: 'inline-block' },
 
-  panel: { background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:18, padding:20 },
-  panelHeader: { marginBottom:16 },
-  panelTitle: { fontSize:14, fontWeight:500, color:'#e2e8f0', marginBottom:3 },
-  panelSub: { fontSize:12, color:'#718096', fontWeight:300 },
+  panel: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: 20 },
+  panelHeader: { marginBottom: 16 },
+  panelTitle: { fontSize: 14, fontWeight: 500, color: '#e2e8f0', marginBottom: 3 },
+  panelSub: { fontSize: 12, color: '#718096', fontWeight: 300 },
 
-  calRow: { display:'flex', alignItems:'center', flexWrap:'wrap', gap:8, marginBottom:10 },
-  calBtn: { padding:'8px 12px', background:'#1a1a2e', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:10, fontSize:12, cursor:'pointer', fontFamily:"'DM Sans', sans-serif" },
-  calBtnSecondary: { padding:'8px 10px', background:'rgba(255,255,255,0.04)', color:'#a0aec0', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, fontSize:12, cursor:'pointer', fontFamily:"'DM Sans', sans-serif" },
-  calLabel: { fontSize:11, color:'#a0aec0' },
-  calSelect: { padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calInput: { width:70, padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calInputWide: { flex:1, minWidth:140, padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calStatus: { fontSize:11, color:'#60a5fa' },
-  calHint: { fontSize:11, color:'#718096', marginBottom:8 },
-  calError: { fontSize:11, color:'#ef4444', marginBottom:8 },
-  calSteps: { display:'flex', flexDirection:'column', gap:6, marginBottom:10 },
-  calStep: { display:'flex', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', fontSize:11, color:'#a0aec0' },
-  calStepActive: { border:'1px solid rgba(226,185,111,0.35)', color:'#e2b96f' },
-  calStepDone: { border:'1px solid rgba(52,211,153,0.35)', color:'#34d399' },
-  calRawGrid: { display:'grid', gridTemplateColumns:'repeat(4, minmax(0, 1fr))', gap:6, marginTop:8 },
-  calRawCell: { display:'flex', flexDirection:'column', gap:2, padding:'6px 8px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', fontSize:10, color:'#a0aec0' },
+  calRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  calBtn: { padding: '8px 12px', background: '#1a1a2e', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+  calBtnSecondary: { padding: '8px 10px', background: 'rgba(255,255,255,0.04)', color: '#a0aec0', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+  calLabel: { fontSize: 11, color: '#a0aec0' },
+  calSelect: { padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calInput: { width: 70, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calInputWide: { flex: 1, minWidth: 140, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calStatus: { fontSize: 11, color: '#60a5fa' },
+  calHint: { fontSize: 11, color: '#718096', marginBottom: 8 },
+  calError: { fontSize: 11, color: '#ef4444', marginBottom: 8 },
+  calSteps: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 },
+  calStep: { display: 'flex', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: '#a0aec0' },
+  calStepActive: { border: '1px solid rgba(226,185,111,0.35)', color: '#e2b96f' },
+  calStepDone: { border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' },
+  calRawGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginTop: 8 },
+  calRawCell: { display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', fontSize: 10, color: '#a0aec0' },
 
-  fieldGroup: { display:'flex', flexDirection:'column', gap:8, marginBottom:14 },
-  label: { fontSize:12, color:'#a0aec0', fontWeight:500 },
-  input: { padding:'11px 14px', borderRadius:10, border:'1px solid rgba(255,255,255,0.10)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:14, fontFamily:"'DM Sans', sans-serif", transition:'border-color 0.2s, box-shadow 0.2s' },
-  inputFocus: { borderColor:'rgba(226,185,111,0.5)', boxShadow:'0 0 0 3px rgba(226,185,111,0.08)' },
-  startBtn: { width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', background:'#dc2626', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  fieldGroup: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 },
+  label: { fontSize: 12, color: '#a0aec0', fontWeight: 500 },
+  input: { padding: '11px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 14, fontFamily: "'DM Sans', sans-serif", transition: 'border-color 0.2s, box-shadow 0.2s' },
+  inputFocus: { borderColor: 'rgba(226,185,111,0.5)', boxShadow: '0 0 0 3px rgba(226,185,111,0.08)' },
+  startBtn: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  emptySignsBox: { display:'flex', flexDirection:'column', alignItems:'center', padding:'24px 12px', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed rgba(255,255,255,0.08)' },
-  emptySignsIcon: { fontSize:28, opacity:0.3, marginBottom:8 },
-  emptySignsText: { fontSize:12, color:'#4a5568', textAlign:'center' },
+  emptySignsBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.08)' },
+  emptySignsIcon: { fontSize: 28, opacity: 0.3, marginBottom: 8 },
+  emptySignsText: { fontSize: 12, color: '#4a5568', textAlign: 'center' },
 
-  signsList: { display:'flex', flexDirection:'column', gap:8 },
-  signTag: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius:10, border:'1px solid rgba(255,255,255,0.07)', transition:'border-color 0.2s' },
-  signTagLeft: { display:'flex', alignItems:'center', gap:10 },
-  signTagIndex: { width:22, height:22, borderRadius:'50%', background:'rgba(226,185,111,0.15)', color:'#e2b96f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700 },
-  signTagLabel: { fontSize:13.5, fontWeight:500, color:'#e2e8f0' },
-  signTagMeta: { fontSize:11, color:'#718096', marginTop:1 },
-  removeSign: { padding:'4px 8px', background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:12, opacity:0, transition:'opacity 0.2s', borderRadius:6 },
+  signsList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  signTag: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' },
+  signTagLeft: { display: 'flex', alignItems: 'center', gap: 10 },
+  signTagIndex: { width: 22, height: 22, borderRadius: '50%', background: 'rgba(226,185,111,0.15)', color: '#e2b96f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 },
+  signTagLabel: { fontSize: 13.5, fontWeight: 500, color: '#e2e8f0' },
+  signTagMeta: { fontSize: 11, color: '#718096', marginTop: 1 },
+  removeSign: { padding: '4px 8px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, opacity: 0, transition: 'opacity 0.2s', borderRadius: 6 },
 
-  uploadBtn: { width:'100%', padding:13, background:'#1a1a2e', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif", letterSpacing:'0.3px' },
-  successBanner: { marginTop:12, padding:'10px 14px', background:'rgba(5,150,105,0.12)', border:'1px solid rgba(5,150,105,0.25)', borderRadius:10, fontSize:12.5, color:'#34d399' },
-  disabledNote: { marginTop:10, fontSize:11.5, color:'#4a5568' },
+  uploadBtn: { width: '100%', padding: 13, background: '#1a1a2e', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.3px' },
+  successBanner: { marginTop: 12, padding: '10px 14px', background: 'rgba(5,150,105,0.12)', border: '1px solid rgba(5,150,105,0.25)', borderRadius: 10, fontSize: 12.5, color: '#34d399' },
+  disabledNote: { marginTop: 10, fontSize: 11.5, color: '#4a5568' },
   closeBtn: {
     width: 34, height: 34, borderRadius: '50%',
     border: 'none', background: 'transparent',
@@ -1514,51 +1514,51 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'background 0.2s', flexShrink: 0,
   },
-  sensorGrid: { display:'flex', flexDirection:'column', gap:6 },
-  sensorRow: { display:'flex', alignItems:'center', gap:10 },
-  sensorKey: { fontSize:11.5, color:'#718096', width:50 },
-  sensorBarBg: { flex:1, height:4, background:'#1a1f35', borderRadius:4, overflow:'hidden' },
-  sensorBarFill: { height:'100%', background:'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius:4, transition:'width 0.2s' },
-  sensorVal: { fontSize:11, color:'#e2b96f', width:34, textAlign:'right' },
+  sensorGrid: { display: 'flex', flexDirection: 'column', gap: 6 },
+  sensorRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  sensorKey: { fontSize: 11.5, color: '#718096', width: 50 },
+  sensorBarBg: { flex: 1, height: 4, background: '#1a1f35', borderRadius: 4, overflow: 'hidden' },
+  sensorBarFill: { height: '100%', background: 'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius: 4, transition: 'width 0.2s' },
+  sensorVal: { fontSize: 11, color: '#e2b96f', width: 34, textAlign: 'right' },
 };
 
 // ─── Modal styles ─────────────────────────────────────────────────────────────
 const rm = {
-  overlay: { position:'fixed', inset:0, background:'rgba(5,7,18,0.85)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, animation:'fadeIn 0.2s ease', padding:24 },
-  modal: { background:'#0d1020', border:'1px solid rgba(255,255,255,0.08)', borderRadius:24, width:'100%', maxWidth:900, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 80px rgba(0,0,0,0.7)', animation:'slideUp 0.3s ease' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(5,7,18,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn 0.2s ease', padding: 24 },
+  modal: { background: '#0d1020', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, width: '100%', maxWidth: 900, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.7)', animation: 'slideUp 0.3s ease' },
 
-  header: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 24px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  headerLeft: { display:'flex', alignItems:'center', gap:14 },
-  headerRight: {display: 'flex'},
-  signChip: { display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:'rgba(226,185,111,0.10)', border:'1px solid rgba(226,185,111,0.25)', borderRadius:100 },
-  signChipIcon: { fontSize:16 },
-  signChipText: { fontSize:14, fontWeight:600, color:'#e2b96f' },
-  recBadge: { display:'flex', alignItems:'center', gap:8, padding:'5px 12px', borderRadius:100, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12, fontWeight:500 },
-  recDot: { width:8, height:8, borderRadius:'50%', background:'#ef4444', display:'inline-block' },
-  playBadge: { fontSize:12, color:'#34d399', padding:'5px 12px', background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.20)', borderRadius:100 },
-  durationLabel: { fontSize:13, color:'#718096',display: 'flex', alignItems: 'center', marginRight: '10px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 14 },
+  headerRight: { display: 'flex' },
+  signChip: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'rgba(226,185,111,0.10)', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 100 },
+  signChipIcon: { fontSize: 16 },
+  signChipText: { fontSize: 14, fontWeight: 600, color: '#e2b96f' },
+  recBadge: { display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 100, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 12, fontWeight: 500 },
+  recDot: { width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' },
+  playBadge: { fontSize: 12, color: '#34d399', padding: '5px 12px', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.20)', borderRadius: 100 },
+  durationLabel: { fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', marginRight: '10px' },
 
-  viewport: { position: 'relative', width: '100%',height: '380px', background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)', overflow: 'hidden', display: 'flex', flexDirection: 'column'},
-  vpLabel: { position:'absolute', top:12, left:16, zIndex:2, fontSize:10, color:'#4a5568', letterSpacing:'1.5px', textTransform:'uppercase' },
-  vpOverlay: { position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' },
+  viewport: { position: 'relative', width: '100%', height: '380px', background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+  vpLabel: { position: 'absolute', top: 12, left: 16, zIndex: 2, fontSize: 10, color: '#4a5568', letterSpacing: '1.5px', textTransform: 'uppercase' },
+  vpOverlay: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
 
-  controls: { padding:'18px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.02)', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  controlHint: { fontSize:13, color:'#4a5568' },
-  stopBtn: { display:'flex', alignItems:'center', gap:8, padding:'12px 28px', background:'#dc2626', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  controls: { padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  controlHint: { fontSize: 13, color: '#4a5568' },
+  stopBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  trimSection: { padding:'18px 24px', background:'rgba(255,255,255,0.02)', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  trimHeader: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 },
-  trimTitle: { fontSize:14, fontWeight:500, color:'#e2e8f0' },
-  trimMeta: { fontSize:12, color:'#718096' },
-  sliders: { marginBottom:16 },
-  sliderGroup: { marginBottom:12 },
-  sliderRow: { display:'flex', justifyContent:'space-between', marginBottom:6 },
-  sliderLabel: { fontSize:12, color:'#a0aec0' },
-  sliderVal: { fontSize:12, color:'#e2b96f', fontWeight:500 },
-  trimBar: { height:6, background:'#1a1f35', borderRadius:6, overflow:'hidden', marginTop:4 },
-  trimFill: { position:'absolute', height:'100%', background:'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius:6 },
+  trimSection: { padding: '18px 24px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  trimHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  trimTitle: { fontSize: 14, fontWeight: 500, color: '#e2e8f0' },
+  trimMeta: { fontSize: 12, color: '#718096' },
+  sliders: { marginBottom: 16 },
+  sliderGroup: { marginBottom: 12 },
+  sliderRow: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 },
+  sliderLabel: { fontSize: 12, color: '#a0aec0' },
+  sliderVal: { fontSize: 12, color: '#e2b96f', fontWeight: 500 },
+  trimBar: { height: 6, background: '#1a1f35', borderRadius: 6, overflow: 'hidden', marginTop: 4 },
+  trimFill: { position: 'absolute', height: '100%', background: 'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius: 6 },
 
-  actionRow: { display:'flex', gap:12, justifyContent:'flex-end' },
-  discardBtn: { padding:'11px 22px', background:'rgba(239,68,68,0.06)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.20)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.15s, color 0.15s', fontFamily:"'DM Sans', sans-serif" },
-  saveSignBtn: { padding:'11px 28px', background:'#059669', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  actionRow: { display: 'flex', gap: 12, justifyContent: 'flex-end' },
+  discardBtn: { padding: '11px 22px', background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.20)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s, color 0.15s', fontFamily: "'DM Sans', sans-serif" },
+  saveSignBtn: { padding: '11px 28px', background: '#059669', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 };

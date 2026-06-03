@@ -33,14 +33,14 @@ const FINGER_LABELS = [
   { label: 'Thumb DIP', idx: 15 },
 ];
 
-const IMU_PACKET_HEADER          = 0xAABBCCDD;
-const FINGER_PACKET_HEADER       = 0xF1F2F3F4;
+const IMU_PACKET_HEADER = 0xAABBCCDD;
+const FINGER_PACKET_HEADER = 0xF1F2F3F4;
 const RAW_VOLTAGES_PACKET_HEADER = 0xC0DEC0DE;
 // Finger packet layout per spec: 4 header + 4 ts + 60 angles + 4 thumbExtra + 1 calStatus = 73
 const FINGER_PACKET_MIN_SIZE = 73;
-const FINGER_PACKET_OFFSET   = 8;   // first angle byte
-const FINGER_PACKET_ANGLES   = 15;  // 5 fingers × 3 floats
-const IMU_PACKET_MIN_SIZE    = 90;  // full diagnostic packet
+const FINGER_PACKET_OFFSET = 8;   // first angle byte
+const FINGER_PACKET_ANGLES = 15;  // 5 fingers × 3 floats
+const IMU_PACKET_MIN_SIZE = 90;  // full diagnostic packet
 const DEG2RAD = Math.PI / 180;
 const CAL_ALL_FINGERS = 0b00011111; // 0x1F — all 5 fingers calibrated
 
@@ -103,12 +103,12 @@ const DEFAULT_SAMPLE_COUNT = 10;
 const DEFAULT_SAMPLE_DELAY_MS = 0;
 
 // ADS1115 GAIN_TWO: SS49E sensor valid range and expected span
-const VOLTAGE_MIN_VALID   = 0.3;   // below = sensor disconnected
-const VOLTAGE_MAX_VALID   = 2.1;   // above = out of ADS range
-const VOLTAGE_NEUTRAL     = 1.5;   // ~0mT, neutral position
-const VOLTAGE_FULL_SCALE  = 2.5;   // used for bar fill (%)
-const SENSOR_MIN_SPAN     = 0.2;   // warn if range < 0.2V
-const SENSOR_DEAD_THRESH  = 0.1;   // flag dead if var < 0.1V over 30s
+const VOLTAGE_MIN_VALID = 0.3;   // below = sensor disconnected
+const VOLTAGE_MAX_VALID = 2.1;   // above = out of ADS range
+const VOLTAGE_NEUTRAL = 1.5;   // ~0mT, neutral position
+const VOLTAGE_FULL_SCALE = 2.5;   // used for bar fill (%)
+const SENSOR_MIN_SPAN = 0.2;   // warn if range < 0.2V
+const SENSOR_DEAD_THRESH = 0.1;   // flag dead if var < 0.1V over 30s
 
 const EMPTY_FINGER = { yaw: 0, pitch1: 0, pitch2: 0 };
 
@@ -167,40 +167,40 @@ function buildFingerQuats(fingers, thumbExtra, calStatus = 0xFF) {
   if (!Array.isArray(fingers) || fingers.length < 5) return null;
 
   // Packet order: [Pinky=0, Ring=1, Middle=2, Index=3, Thumb=4]
-  const pinky  = fingers[0] ?? EMPTY_FINGER;
-  const ring   = fingers[1] ?? EMPTY_FINGER;
+  const pinky = fingers[0] ?? EMPTY_FINGER;
+  const ring = fingers[1] ?? EMPTY_FINGER;
   const middle = fingers[2] ?? EMPTY_FINGER;
-  const index  = fingers[3] ?? EMPTY_FINGER;
-  const thumb  = fingers[4] ?? EMPTY_FINGER;
+  const index = fingers[3] ?? EMPTY_FINGER;
+  const thumb = fingers[4] ?? EMPTY_FINGER;
 
   const mcpQuat = (f) => quatFromEuler(toRad(f.pitch1), toRad(f.yaw), 0);
   const pipQuat = (f) => quatFromEuler(toRad(f.pitch2), 0, 0);
-  const thumbIp =        quatFromEuler(toRad(thumbExtra), 0, 0);
+  const thumbIp = quatFromEuler(toRad(thumbExtra), 0, 0);
 
   // Only apply quaternions for calibrated fingers; null → ArmModel falls back to rest spread
-  const thumbQ  = isFingerCalibrated(calStatus, 4) ? { mcp: mcpQuat(thumb),  pip: pipQuat(thumb),  ip: thumbIp  } : null;
-  const indexQ  = isFingerCalibrated(calStatus, 3) ? { mcp: mcpQuat(index),  pip: pipQuat(index)  } : null;
+  const thumbQ = isFingerCalibrated(calStatus, 4) ? { mcp: mcpQuat(thumb), pip: pipQuat(thumb), ip: thumbIp } : null;
+  const indexQ = isFingerCalibrated(calStatus, 3) ? { mcp: mcpQuat(index), pip: pipQuat(index) } : null;
   const middleQ = isFingerCalibrated(calStatus, 2) ? { mcp: mcpQuat(middle), pip: pipQuat(middle) } : null;
-  const ringQ   = isFingerCalibrated(calStatus, 1) ? { mcp: mcpQuat(ring),   pip: pipQuat(ring)   } : null;
-  const pinkyQ  = isFingerCalibrated(calStatus, 0) ? { mcp: mcpQuat(pinky),  pip: pipQuat(pinky)  } : null;
+  const ringQ = isFingerCalibrated(calStatus, 1) ? { mcp: mcpQuat(ring), pip: pipQuat(ring) } : null;
+  const pinkyQ = isFingerCalibrated(calStatus, 0) ? { mcp: mcpQuat(pinky), pip: pipQuat(pinky) } : null;
 
   return [
-    /* [0]  thumb01 MCP  */ thumbQ?.mcp  ?? null,
-    /* [1]  thumb02 PIP  */ thumbQ?.pip  ?? null,
-    /* [2]  thumb03 IP   */ thumbQ?.ip   ?? null,
-    /* [3]  index01 MCP  */ indexQ?.mcp  ?? null,
-    /* [4]  index02 PIP  */ indexQ?.pip  ?? null,
-    /* [5]  index03 DIP  */ indexQ?.pip  ?? null,   // DIP mirrors PIP
+    /* [0]  thumb01 MCP  */ thumbQ?.mcp ?? null,
+    /* [1]  thumb02 PIP  */ thumbQ?.pip ?? null,
+    /* [2]  thumb03 IP   */ thumbQ?.ip ?? null,
+    /* [3]  index01 MCP  */ indexQ?.mcp ?? null,
+    /* [4]  index02 PIP  */ indexQ?.pip ?? null,
+    /* [5]  index03 DIP  */ indexQ?.pip ?? null,   // DIP mirrors PIP
     /* [6]  middle01 MCP */ middleQ?.mcp ?? null,
     /* [7]  middle02 PIP */ middleQ?.pip ?? null,
     /* [8]  middle03 DIP */ middleQ?.pip ?? null,
-    /* [9]  ring01 MCP   */ ringQ?.mcp   ?? null,
-    /* [10] ring02 PIP   */ ringQ?.pip   ?? null,
-    /* [11] ring03 DIP   */ ringQ?.pip   ?? null,
-    /* [12] pinky01 MCP  */ pinkyQ?.mcp  ?? null,
-    /* [13] pinky02 PIP  */ pinkyQ?.pip  ?? null,
-    /* [14] pinky03 DIP  */ pinkyQ?.pip  ?? null,
-    /* [15] pinky03 end  */ pinkyQ?.pip  ?? null,
+    /* [9]  ring01 MCP   */ ringQ?.mcp ?? null,
+    /* [10] ring02 PIP   */ ringQ?.pip ?? null,
+    /* [11] ring03 DIP   */ ringQ?.pip ?? null,
+    /* [12] pinky01 MCP  */ pinkyQ?.mcp ?? null,
+    /* [13] pinky02 PIP  */ pinkyQ?.pip ?? null,
+    /* [14] pinky03 DIP  */ pinkyQ?.pip ?? null,
+    /* [15] pinky03 end  */ pinkyQ?.pip ?? null,
   ];
 }
 
@@ -209,22 +209,22 @@ function buildRigData(frame) {
   const fingers = buildFingerQuats(frame.fingerAngles, frame.thumbExtra ?? 0, frame.calStatus ?? 0xFF);
 
   return {
-    palm:    frame.imuQuat ?? undefined,
-    fingers: fingers       ?? undefined,
+    palm: frame.imuQuat ?? undefined,
+    fingers: fingers ?? undefined,
   };
 }
 
 function useGloveWebSocket(ipAddress, onFrame) {
   const [connectionId, setConnectionId] = useState(0);
   const [gloveState, setGloveState] = useState({
-    connected:        false,
-    imuQuat:          null,
-    fingerAngles:     null,
+    connected: false,
+    imuQuat: null,
+    fingerAngles: null,
     fingerAnglesFlat: null,
-    thumbExtra:       0,
-    calStatus:        0,       // bitmask — 0 = no fingers calibrated
-    imuTimestamp:     null,
-    fingerTimestamp:  null,
+    thumbExtra: 0,
+    calStatus: 0,       // bitmask — 0 = no fingers calibrated
+    imuTimestamp: null,
+    fingerTimestamp: null,
     imuDiag: null,
   });
   const imuQuatRef = useRef(null);
@@ -247,11 +247,11 @@ function useGloveWebSocket(ipAddress, onFrame) {
     wsRef.current = socket;
 
     socket.onopen = () => {
-      console.log('[Glove] Connected');
+      //console.log('[Glove] Connected');
       setGloveState(prev => ({ ...prev, connected: true }));
     };
     socket.onclose = () => {
-      console.log('[Glove] Disconnected');
+      //console.log('[Glove] Disconnected');
       setGloveState(prev => ({ ...prev, connected: false }));
       wsRef.current = null;
     };
@@ -286,10 +286,10 @@ function useGloveWebSocket(ipAddress, onFrame) {
           if (view.byteLength >= IMU_PACKET_MIN_SIZE) {
             imuDiag = {
               timeSinceGoodAccel: view.getFloat32(32, true),  // seconds
-              driftExposure:      view.getFloat32(36, true),  // seconds of low-accel
-              timeSinceGoodMag:   view.getFloat32(48, true),  // seconds
-              magStability:       view.getFloat32(80, true),  // 0.0–1.0 (1.0 = stable)
-              useMag:             view.getUint8(86) === 1,    // magnetometer active
+              driftExposure: view.getFloat32(36, true),  // seconds of low-accel
+              timeSinceGoodMag: view.getFloat32(48, true),  // seconds
+              magStability: view.getFloat32(80, true),  // 0.0–1.0 (1.0 = stable)
+              useMag: view.getUint8(86) === 1,    // magnetometer active
             };
           }
 
@@ -302,13 +302,13 @@ function useGloveWebSocket(ipAddress, onFrame) {
 
           if (onFrame) {
             onFrame({
-              source:       'imu',
-              fingers:      fingerAnglesFlatRef.current,
+              source: 'imu',
+              fingers: fingerAnglesFlatRef.current,
               fingerAngles: fingerAnglesRef.current,
               imuQuat,
               imuDiag,
-              flex:         {},
-              pads:         [],
+              flex: {},
+              pads: [],
             });
           }
           return;
@@ -340,7 +340,7 @@ function useGloveWebSocket(ipAddress, onFrame) {
         for (let f = 0; f < 5; f += 1) {
           const base = FINGER_PACKET_OFFSET + f * 12;  // 3 floats × 4 bytes = 12
           fingers.push({
-            yaw:    view.getFloat32(base + 0, true),
+            yaw: view.getFloat32(base + 0, true),
             pitch1: view.getFloat32(base + 4, true),
             pitch2: view.getFloat32(base + 8, true),
           });
@@ -349,7 +349,7 @@ function useGloveWebSocket(ipAddress, onFrame) {
         // thumbExtra at explicit offset 68 (after 5×3 floats = 60 bytes + 8 header)
         const thumbExtra = view.getFloat32(68, true);
         // calStatus bitmask at byte 72: bit0=Pinky, bit1=Ring, bit2=Middle, bit3=Index, bit4=Thumb
-        const calStatus  = view.getUint8(72);
+        const calStatus = view.getUint8(72);
 
         // Build flat array [5×3 angles + thumbExtra] for recording
         const floats = [
@@ -357,29 +357,29 @@ function useGloveWebSocket(ipAddress, onFrame) {
           thumbExtra,
         ];
 
-        fingerAnglesRef.current     = fingers;
+        fingerAnglesRef.current = fingers;
         fingerAnglesFlatRef.current = floats;
-        thumbExtraRef.current       = thumbExtra;
+        thumbExtraRef.current = thumbExtra;
 
         setGloveState(prev => ({
           ...prev,
-          fingerAngles:     fingers,
+          fingerAngles: fingers,
           fingerAnglesFlat: floats,
           thumbExtra,
           calStatus,
-          fingerTimestamp:  timestamp,
+          fingerTimestamp: timestamp,
         }));
 
         if (onFrame) {
           onFrame({
-            source:       'finger',
-            fingers:      floats,
+            source: 'finger',
+            fingers: floats,
             fingerAngles: fingers,
             thumbExtra,
             calStatus,
-            imuQuat:      imuQuatRef.current,
-            flex:         {},
-            pads:         [],
+            imuQuat: imuQuatRef.current,
+            flex: {},
+            pads: [],
           });
         }
       } catch (err) {
@@ -512,30 +512,30 @@ function FingerAnglesPanel({ frame, calStatus = 0 }) {
 function IMUDiagnosticsPanel({ diag, imuQuat }) {
   if (!diag && !imuQuat) return null;
 
-  const magPct  = diag ? Math.round((diag.magStability ?? 0) * 100) : null;
-  const drift   = diag ? (diag.driftExposure   ?? 0).toFixed(1) : null;
-  const tAccel  = diag ? (diag.timeSinceGoodAccel ?? 0).toFixed(1) : null;
-  const tMag    = diag ? (diag.timeSinceGoodMag   ?? 0).toFixed(1) : null;
-  const useMag  = diag ? diag.useMag : null;
+  const magPct = diag ? Math.round((diag.magStability ?? 0) * 100) : null;
+  const drift = diag ? (diag.driftExposure ?? 0).toFixed(1) : null;
+  const tAccel = diag ? (diag.timeSinceGoodAccel ?? 0).toFixed(1) : null;
+  const tMag = diag ? (diag.timeSinceGoodMag ?? 0).toFixed(1) : null;
+  const useMag = diag ? diag.useMag : null;
 
   // colour-code mag stability bar
   const magColor = !diag ? '#4a5568'
     : magPct >= 70 ? '#34d399'
-    : magPct >= 40 ? '#f59e0b'
-    : '#ef4444';
+      : magPct >= 40 ? '#f59e0b'
+        : '#ef4444';
 
   const d = {
-    wrap:    { background: 'rgba(10,12,28,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(12px)' },
-    header:  { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-    title:   { fontSize: 12, fontWeight: 600, color: '#a0aec0', letterSpacing: '0.8px', textTransform: 'uppercase' },
-    badge:   { fontSize: 10, padding: '2px 8px', borderRadius: 100, background: imuQuat ? 'rgba(52,211,153,0.12)' : 'rgba(74,85,104,0.3)', color: imuQuat ? '#34d399' : '#4a5568', border: `1px solid ${imuQuat ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.06)'}` },
-    body:    { padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 },
-    row:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-    key:     { fontSize: 11, color: '#718096' },
-    val:     { fontSize: 11.5, color: '#e2b96f', fontVariantNumeric: 'tabular-nums' },
-    barBg:   { flex: 1, height: 4, background: '#1a1f35', borderRadius: 4, overflow: 'hidden', margin: '0 10px' },
+    wrap: { background: 'rgba(10,12,28,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(12px)' },
+    header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
+    title: { fontSize: 12, fontWeight: 600, color: '#a0aec0', letterSpacing: '0.8px', textTransform: 'uppercase' },
+    badge: { fontSize: 10, padding: '2px 8px', borderRadius: 100, background: imuQuat ? 'rgba(52,211,153,0.12)' : 'rgba(74,85,104,0.3)', color: imuQuat ? '#34d399' : '#4a5568', border: `1px solid ${imuQuat ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.06)'}` },
+    body: { padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 },
+    row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    key: { fontSize: 11, color: '#718096' },
+    val: { fontSize: 11.5, color: '#e2b96f', fontVariantNumeric: 'tabular-nums' },
+    barBg: { flex: 1, height: 4, background: '#1a1f35', borderRadius: 4, overflow: 'hidden', margin: '0 10px' },
     barFill: (pct, color) => ({ width: `${pct}%`, height: '100%', borderRadius: 4, background: color, transition: 'width 0.5s' }),
-    pill:    (on) => ({ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: on ? 'rgba(96,165,250,0.12)' : 'rgba(74,85,104,0.2)', color: on ? '#60a5fa' : '#4a5568', border: `1px solid ${on ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.06)'}` }),
+    pill: (on) => ({ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: on ? 'rgba(96,165,250,0.12)' : 'rgba(74,85,104,0.2)', color: on ? '#60a5fa' : '#4a5568', border: `1px solid ${on ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.06)'}` }),
   };
 
   return (
@@ -596,8 +596,8 @@ function IMUDiagnosticsPanel({ diag, imuQuat }) {
 // 3-state: grey=not cal, yellow=knots sent (UI), green=firmware confirms calibrated
 const CAL_FINGER_ORDER = [
   { label: 'Pinky', bit: 0 },
-  { label: 'Ring',  bit: 1 },
-  { label: 'Mid',   bit: 2 },
+  { label: 'Ring', bit: 1 },
+  { label: 'Mid', bit: 2 },
   { label: 'Index', bit: 3 },
   { label: 'Thumb', bit: 4 },
 ];
@@ -620,7 +620,7 @@ function CalStatusStrip({ calStatus, knotsByAxis }) {
   const stateBorder = { green: 'rgba(52,211,153,0.30)', yellow: 'rgba(245,158,11,0.30)', grey: 'rgba(255,255,255,0.06)' };
   const stateLabel = { green: '✓', yellow: '~', grey: '○' };
 
-  const calCount = [0,1,2,3,4].filter(b => calStatus & (1 << b)).length;
+  const calCount = [0, 1, 2, 3, 4].filter(b => calStatus & (1 << b)).length;
 
   return (
     <div style={{ background: 'rgba(10,12,28,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(12px)' }}>
@@ -647,7 +647,7 @@ function CalStatusStrip({ calStatus, knotsByAxis }) {
         })}
       </div>
       <div style={{ padding: '4px 14px 10px', display: 'flex', gap: 16 }}>
-        {[{c:'green',t:'Firmware cal'},{c:'yellow',t:'Knots pending'},{c:'grey',t:'Not set'}].map(({c,t}) => (
+        {[{ c: 'green', t: 'Firmware cal' }, { c: 'yellow', t: 'Knots pending' }, { c: 'grey', t: 'Not set' }].map(({ c, t }) => (
           <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: stateColor[c] }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: stateColor[c], display: 'inline-block' }} />
             {t}
@@ -691,8 +691,8 @@ function LiveVoltageMonitor({ voltages, sensorHealth }) {
           );
         })}
         <div style={{ marginTop: 6, display: 'flex', gap: 16, fontSize: 10 }}>
-          {[{color:'#ef4444',text:'out = voltage out of range (0.3–2.1V)'},{color:'#f59e0b',text:'flat = no variation in 30s'}].map(({color,text})=>(
-            <span key={text} style={{color}}>{text}</span>
+          {[{ color: '#ef4444', text: 'out = voltage out of range (0.3–2.1V)' }, { color: '#f59e0b', text: 'flat = no variation in 30s' }].map(({ color, text }) => (
+            <span key={text} style={{ color }}>{text}</span>
           ))}
         </div>
       </div>
@@ -719,7 +719,7 @@ function CouplingCalibrationUI({
   const raw = fingerAngles?.[couplingFinger];
   const comp = raw ? {
     pitch1: +(raw.pitch1 - coeffs[0] * raw.pitch2 - coeffs[1] * raw.yaw).toFixed(2),
-    pitch2: +(raw.pitch2 - coeffs[2] * raw.yaw    - coeffs[3] * raw.pitch1).toFixed(2),
+    pitch2: +(raw.pitch2 - coeffs[2] * raw.yaw - coeffs[3] * raw.pitch1).toFixed(2),
   } : null;
 
   return (
@@ -728,7 +728,8 @@ function CouplingCalibrationUI({
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {CAL_FINGER_NAMES.map((name, fi) => (
           <button key={name} onClick={() => setCouplingFinger(fi)}
-            style={{ flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+            style={{
+              flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
               background: fi === couplingFinger ? 'rgba(226,185,111,0.15)' : 'rgba(255,255,255,0.04)',
               color: fi === couplingFinger ? '#e2b96f' : '#718096',
               border: `1px solid ${fi === couplingFinger ? 'rgba(226,185,111,0.35)' : 'rgba(255,255,255,0.08)'}`,
@@ -756,7 +757,7 @@ function CouplingCalibrationUI({
         <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', fontSize: 11 }}>
           <div style={{ color: '#a0aec0', marginBottom: 6, fontWeight: 600 }}>Live compensation preview — {CAL_FINGER_NAMES[couplingFinger]}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {[['P1 raw', raw.pitch1.toFixed(2)], ['P1 comp', comp.pitch1], ['P2 raw', raw.pitch2.toFixed(2)], ['P2 comp', comp.pitch2]].map(([k,v]) => (
+            {[['P1 raw', raw.pitch1.toFixed(2)], ['P1 comp', comp.pitch1], ['P2 raw', raw.pitch2.toFixed(2)], ['P2 comp', comp.pitch2]].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
                 <span style={{ color: '#718096' }}>{k}</span>
                 <span style={{ color: k.includes('comp') ? '#34d399' : '#e2b96f', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
@@ -768,13 +769,17 @@ function CouplingCalibrationUI({
       {/* Buttons */}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => onApply(couplingFinger)} disabled={!isConnected}
-          style={{ flex: 1, padding: '9px', borderRadius: 10, fontSize: 12, cursor: isConnected ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif",
-            background: 'rgba(226,185,111,0.12)', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.30)', opacity: isConnected ? 1 : 0.5 }}>
+          style={{
+            flex: 1, padding: '9px', borderRadius: 10, fontSize: 12, cursor: isConnected ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif",
+            background: 'rgba(226,185,111,0.12)', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.30)', opacity: isConnected ? 1 : 0.5
+          }}>
           ✓ Apply Coupling
         </button>
         <button onClick={() => onAutoDetect(couplingFinger)} disabled={!isConnected || autoDetecting}
-          style={{ flex: 1, padding: '9px', borderRadius: 10, fontSize: 12, cursor: isConnected && !autoDetecting ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif",
-            background: autoDetecting ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.04)', color: autoDetecting ? '#60a5fa' : '#a0aec0', border: `1px solid ${autoDetecting ? 'rgba(96,165,250,0.30)' : 'rgba(255,255,255,0.10)'}` }}>
+          style={{
+            flex: 1, padding: '9px', borderRadius: 10, fontSize: 12, cursor: isConnected && !autoDetecting ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif",
+            background: autoDetecting ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.04)', color: autoDetecting ? '#60a5fa' : '#a0aec0', border: `1px solid ${autoDetecting ? 'rgba(96,165,250,0.30)' : 'rgba(255,255,255,0.10)'}`
+          }}>
           {autoDetecting ? `Auto ${autoProgress}%` : 'Auto-Detect 5s'}
         </button>
       </div>
@@ -818,9 +823,9 @@ function RecordingModal({
   calibrate,
 }) {
   const frameCount = frames.length;
-  const duration   = (frameCount / 60).toFixed(1);
-  const trimStart  = trimRange[0];
-  const trimEnd    = trimRange[1];
+  const duration = (frameCount / 60).toFixed(1);
+  const trimStart = trimRange[0];
+  const trimEnd = trimRange[1];
   const trimmedCount = Math.max(0, Math.floor(((trimEnd - trimStart) / 100) * frameCount));
 
   // Playback of recorded frames when stopped
@@ -949,7 +954,7 @@ export default function GloveCapture() {
   const ESP_IP = "192.168.1.8";
 
   // Recording state
-  const [isRecording, setIsRecording]     = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [recordedFrames, setRecordedFrames] = useState([]);
   const isRecordingRef = useRef(false); // mirrors state for use inside WS closure
 
@@ -1002,14 +1007,14 @@ export default function GloveCapture() {
   const currentFrame = useMemo(() => {
     if (!gloveFrame?.imuQuat && !gloveFrame?.fingerAnglesFlat) return null;
     return {
-      fingers:      gloveFrame.fingerAnglesFlat,
+      fingers: gloveFrame.fingerAnglesFlat,
       fingerAngles: gloveFrame.fingerAngles,
-      thumbExtra:   gloveFrame.thumbExtra,
-      calStatus:    gloveFrame.calStatus ?? 0,
-      imuQuat:      gloveFrame.imuQuat,
-      imuDiag:      gloveFrame.imuDiag ?? null,
-      flex:         {},
-      pads:         [],
+      thumbExtra: gloveFrame.thumbExtra,
+      calStatus: gloveFrame.calStatus ?? 0,
+      imuQuat: gloveFrame.imuQuat,
+      imuDiag: gloveFrame.imuDiag ?? null,
+      flex: {},
+      pads: [],
     };
   }, [gloveFrame]);
 
@@ -1018,16 +1023,16 @@ export default function GloveCapture() {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
-  const [loading, setLoading] =useState(false);
+  const [loading, setLoading] = useState(false);
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
   // Calibration ref – set to true to trigger reset inside HandModel
   const calibrateRef = useRef(false);
 
   // Modal state
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [signLabel, setSignLabel]     = useState('');
-  const [signInput, setSignInput]     = useState('');
-  const [trimRange, setTrimRange]     = useState([0, 100]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [signLabel, setSignLabel] = useState('');
+  const [signInput, setSignInput] = useState('');
+  const [trimRange, setTrimRange] = useState([0, 100]);
 
   const [restRotationR, setRestRotationR] = useState([-0.96, -3.15, -3.15]);
   const [restRotationL, setRestRotationL] = useState([-0.99, -3.15, -3.15]);
@@ -1078,20 +1083,20 @@ export default function GloveCapture() {
   const rawWaiterRef = useRef(null);
 
   // Helper to update a single axis
-  const setR = (axis, val) => setRestRotationR(prev => { const n=[...prev]; n[axis]=val; return n; });
-  const setL = (axis, val) => setRestRotationL(prev => { const n=[...prev]; n[axis]=val; return n; });
+  const setR = (axis, val) => setRestRotationR(prev => { const n = [...prev]; n[axis] = val; return n; });
+  const setL = (axis, val) => setRestRotationL(prev => { const n = [...prev]; n[axis] = val; return n; });
 
   // Saved signs (one submission = many signs)
-  const [signs, setSigns]             = useState([]); // [{label, frames, trimStart, trimEnd}]
+  const [signs, setSigns] = useState([]); // [{label, frames, trimStart, trimEnd}]
   const [downloadStatus, setDownloadStatus] = useState(null);
 
   // Nav dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef  = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Stats
   const frameCount = recordedFrames.length;
-  const duration   = (frameCount / 60).toFixed(1);
+  const duration = (frameCount / 60).toFixed(1);
 
   const axisKnots = knotsByAxis[calFinger][calAxis];
   const nextStepIdx = axisKnots.findIndex((val) => !Number.isFinite(val));
@@ -1291,7 +1296,7 @@ export default function GloveCapture() {
       fingers: CAL_FINGER_NAMES.map((name, fi) => ({
         name,
         knots: {
-          yaw:    knotsByAxis[fi][0].map(v => Number.isFinite(v) ? v : null),
+          yaw: knotsByAxis[fi][0].map(v => Number.isFinite(v) ? v : null),
           pitch1: knotsByAxis[fi][1].map(v => Number.isFinite(v) ? v : null),
           pitch2: knotsByAxis[fi][2].map(v => Number.isFinite(v) ? v : null),
           ...(fi === 4 ? { thumbIP: knotsByAxis[fi][3].map(v => Number.isFinite(v) ? v : null) } : {}),
@@ -1324,7 +1329,7 @@ export default function GloveCapture() {
           return Array.isArray(k) ? k.map(v => (typeof v === 'number' ? v : null)) : Array(5).fill(null);
         })
       );
-      const newCoupling = Array.from({ length: 5 }, (_, fi) => cal.fingers[fi]?.coupling ?? [0,0,0,0]);
+      const newCoupling = Array.from({ length: 5 }, (_, fi) => cal.fingers[fi]?.coupling ?? [0, 0, 0, 0]);
       setKnotsByAxis(newKnots);
       setCouplingByFinger(newCoupling);
       // Send to device
@@ -1469,24 +1474,24 @@ export default function GloveCapture() {
   }, []);
 
   useEffect(() => {
-      async function init() {
-        setLoading(true);
+    async function init() {
+      setLoading(true);
 
-        // Get user
-        const { data: { user } } = await supabase.auth.getUser();
-        setUserEmail(user.email);
-        setUserId(user.id);
-        console.log("Authenticated user:", user);
-        const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
-        const userData = await userRes.json();
-        setUser(userData[0]);
-        console.log("Profile info:", userData);
+      // Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserEmail(user.email);
+      setUserId(user.id);
+      //console.log("Authenticated user:", user);
+      const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
+      const userData = await userRes.json();
+      setUser(userData[0]);
+      //console.log("Profile info:", userData);
 
-        setLoading(false);
-      }
+      setLoading(false);
+    }
 
-      init();
-    }, [backendUrl]);
+    init();
+  }, [backendUrl]);
 
   useEffect(() => {
     if (CAL_FINGER_DEFAULTS[calFinger][calAxis] === -1) {
@@ -1521,7 +1526,7 @@ export default function GloveCapture() {
 
   const handleSaveSign = () => {
     const startIdx = Math.floor((trimRange[0] / 100) * recordedFrames.length);
-    const endIdx   = Math.floor((trimRange[1] / 100) * recordedFrames.length);
+    const endIdx = Math.floor((trimRange[1] / 100) * recordedFrames.length);
     const trimmedFrames = recordedFrames.slice(startIdx, endIdx);
 
     setSigns(prev => [...prev, {
@@ -1537,50 +1542,50 @@ export default function GloveCapture() {
     setRecordedFrames([]);
     setSignInput('');
   };
-const handleDownload = () => {
-  if (signs.length === 0) return;
+  const handleDownload = () => {
+    if (signs.length === 0) return;
 
-  try {
-    // 1. Convert the signs object/array to a JSON string
-    // The arguments (null, 2) add pretty-printing (indentation)
-    const jsonString = JSON.stringify(signs, null, 2);
+    try {
+      // 1. Convert the signs object/array to a JSON string
+      // The arguments (null, 2) add pretty-printing (indentation)
+      const jsonString = JSON.stringify(signs, null, 2);
 
-    // 2. Create a Blob with the JSON data
-    const blob = new Blob([jsonString], { type: 'application/json' });
+      // 2. Create a Blob with the JSON data
+      const blob = new Blob([jsonString], { type: 'application/json' });
 
-    // 3. Create an object URL for the Blob
-    const url = URL.createObjectURL(blob);
+      // 3. Create an object URL for the Blob
+      const url = URL.createObjectURL(blob);
 
-    // 4. Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'signs-data.json'; // The filename for the user
+      // 4. Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'signs-data.json'; // The filename for the user
 
-    // 5. Append to body, click it, and remove it
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // 5. Append to body, click it, and remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-    // 6. Clean up the URL object to free up memory
-    URL.revokeObjectURL(url);
+      // 6. Clean up the URL object to free up memory
+      URL.revokeObjectURL(url);
 
-    // Update your existing UI states
-    console.log("download submission:", signs);
-    setDownloadStatus('success');
-    setTimeout(() => setDownloadStatus(null), 3000);
-    setSigns([]);
+      // Update your existing UI states
+      //console.log("download submission:", signs);
+      setDownloadStatus('success');
+      setTimeout(() => setDownloadStatus(null), 3000);
+      setSigns([]);
 
-  } catch (error) {
-    console.error("Download failed:", error);
-    setDownloadStatus('error');
-  }
-};
+    } catch (error) {
+      console.error("Download failed:", error);
+      setDownloadStatus('error');
+    }
+  };
 
   const handleRemoveSign = (idx) => {
     setSigns(prev => prev.filter((_, i) => i !== idx));
   };
-if (loading) return (<div style={s.page}>
-                        <style>{`        
+  if (loading) return (<div style={s.page}>
+    <style>{`        
                           .loader-overlay {
                             position: fixed;
                             top: 0;
@@ -1607,11 +1612,11 @@ if (loading) return (<div style={s.page}>
                             to { transform: rotate(360deg); } 
                           }
                         `}
-                        </style>
-                        <div className="loader-overlay">
-                          <div className="main-spinner"></div>
-                        </div>
-                      </div>);
+    </style>
+    <div className="loader-overlay">
+      <div className="main-spinner"></div>
+    </div>
+  </div>);
 
   return (
     <div style={s.page}>
@@ -1798,9 +1803,10 @@ if (loading) return (<div style={s.page}>
 
               {/* Tab navigation */}
               <div style={{ display: 'flex', gap: 4, marginTop: 14, marginBottom: 2, borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 0 }}>
-                {[['voltages','Voltages'],['knots','Knot Wizard'],['coupling','Coupling'],['manage','Manage']].map(([tab, label]) => (
+                {[['voltages', 'Voltages'], ['knots', 'Knot Wizard'], ['coupling', 'Coupling'], ['manage', 'Manage']].map(([tab, label]) => (
                   <button key={tab} onClick={() => setCalTab(tab)}
-                    style={{ padding: '7px 12px', fontSize: 11, fontWeight: 600, borderRadius: '8px 8px 0 0', cursor: 'pointer', border: 'none', fontFamily: "'DM Sans', sans-serif",
+                    style={{
+                      padding: '7px 12px', fontSize: 11, fontWeight: 600, borderRadius: '8px 8px 0 0', cursor: 'pointer', border: 'none', fontFamily: "'DM Sans', sans-serif",
                       background: calTab === tab ? 'rgba(226,185,111,0.12)' : 'transparent',
                       color: calTab === tab ? '#e2b96f' : '#718096',
                       borderBottom: calTab === tab ? '2px solid #e2b96f' : '2px solid transparent',
@@ -1822,17 +1828,19 @@ if (loading) return (<div style={s.page}>
                   <div style={s.calSection}>
                     <div style={s.calSectionTitle}>⚡ Dynamic Calibration (all fingers at once)</div>
                     <p style={s.calHint}>Open and close your hand slowly — spread and curl all fingers. System records all 16 sensors simultaneously.</p>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <label style={s.calLabel}>Duration (s)</label>
                       <input type="number" min="3" max="30" step="1"
-                        style={{ ...s.calInput, width:60 }} value={dynCalDuration}
-                        onChange={e => setDynCalDuration(Math.max(3, parseInt(e.target.value,10)||8))}
+                        style={{ ...s.calInput, width: 60 }} value={dynCalDuration}
+                        onChange={e => setDynCalDuration(Math.max(3, parseInt(e.target.value, 10) || 8))}
                         disabled={dynCalRecording} />
                     </div>
-                    <button style={{ ...s.calBtn, width:'100%', padding:'10px', fontSize:13,
-                        background: dynCalRecording ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)',
-                        color: dynCalRecording ? '#ef4444' : '#34d399',
-                        borderColor: dynCalRecording ? 'rgba(239,68,68,0.30)' : 'rgba(52,211,153,0.30)' }}
+                    <button style={{
+                      ...s.calBtn, width: '100%', padding: '10px', fontSize: 13,
+                      background: dynCalRecording ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)',
+                      color: dynCalRecording ? '#ef4444' : '#34d399',
+                      borderColor: dynCalRecording ? 'rgba(239,68,68,0.30)' : 'rgba(52,211,153,0.30)'
+                    }}
                       onClick={startDynamicCal} disabled={!isConnected || dynCalRecording || captureBusy}>
                       {dynCalRecording ? `Recording… ${dynCalCountdown}s remaining` : 'Start Dynamic Calibration'}
                     </button>
@@ -1843,11 +1851,11 @@ if (loading) return (<div style={s.page}>
                     <div style={s.calSectionTitle}>Step-by-Step Axis Wizard</div>
                     <div style={s.calRow}>
                       <label style={s.calLabel}>Finger</label>
-                      <select style={s.calSelect} value={calFinger} onChange={e => { setCalFinger(parseInt(e.target.value,10)); setSanityWarnings([]); setCaptureConfirm(null); }}>
+                      <select style={s.calSelect} value={calFinger} onChange={e => { setCalFinger(parseInt(e.target.value, 10)); setSanityWarnings([]); setCaptureConfirm(null); }}>
                         {CAL_FINGER_NAMES.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
                       </select>
                       <label style={s.calLabel}>Axis</label>
-                      <select style={s.calSelect} value={calAxis} onChange={e => { setCalAxis(parseInt(e.target.value,10)); setSanityWarnings([]); setCaptureConfirm(null); }}>
+                      <select style={s.calSelect} value={calAxis} onChange={e => { setCalAxis(parseInt(e.target.value, 10)); setSanityWarnings([]); setCaptureConfirm(null); }}>
                         {CAL_AXIS_NAMES.map((name, idx) => (
                           <option key={name} value={idx} disabled={CAL_FINGER_DEFAULTS[calFinger][idx] === -1}>{name}</option>
                         ))}
@@ -1881,7 +1889,7 @@ if (loading) return (<div style={s.page}>
                     {/* Sanity warnings */}
                     {sanityWarnings.length > 0 && (
                       <div style={{ marginBottom: 10, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10 }}>
-                        {sanityWarnings.map((w, i) => <div key={i} style={{ fontSize: 11, color: w.startsWith('ℹ') ? '#60a5fa' : '#ef4444', marginBottom: i < sanityWarnings.length-1 ? 4 : 0 }}>{w}</div>)}
+                        {sanityWarnings.map((w, i) => <div key={i} style={{ fontSize: 11, color: w.startsWith('ℹ') ? '#60a5fa' : '#ef4444', marginBottom: i < sanityWarnings.length - 1 ? 4 : 0 }}>{w}</div>)}
                       </div>
                     )}
                     {/* Steps */}
@@ -2076,43 +2084,47 @@ if (loading) return (<div style={s.page}>
           {/* ── Section: Rest Pose Tuner ── */}
           <div
             onClick={() => setTunerOpen(o => !o)}
-            style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-              padding:'10px 16px', cursor:'pointer',
-              borderBottom: '1px solid rgba(255,255,255,0.07)', userSelect:'none' }}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 16px', cursor: 'pointer',
+              borderBottom: '1px solid rgba(255,255,255,0.07)', userSelect: 'none'
+            }}
           >
-            <span style={{ fontSize:11, fontWeight:600, color:'#a0aec0', letterSpacing:'0.8px', textTransform:'uppercase' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#a0aec0', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
               🎛 Rest Pose Tuner
             </span>
-            <span style={{ fontSize:11, color:'#4a5568' }}>{tunerOpen ? '▲' : '▼'}</span>
+            <span style={{ fontSize: 11, color: '#4a5568' }}>{tunerOpen ? '▲' : '▼'}</span>
           </div>
           {tunerOpen && (
-            <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:10, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               <button
                 onClick={() => {
-                  const txt = `restRotationR={[${restRotationR.map(v=>v.toFixed(3)).join(', ')}]}\nrestRotationL={[${restRotationL.map(v=>v.toFixed(3)).join(', ')}]}`;
+                  const txt = `restRotationR={[${restRotationR.map(v => v.toFixed(3)).join(', ')}]}\nrestRotationL={[${restRotationL.map(v => v.toFixed(3)).join(', ')}]}`;
                   navigator.clipboard.writeText(txt);
                 }}
-                style={{ fontSize:11, padding:'6px 12px', background:'rgba(226,185,111,0.10)',
-                  color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:8, cursor:'pointer' }}
+                style={{
+                  fontSize: 11, padding: '6px 12px', background: 'rgba(226,185,111,0.10)',
+                  color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 8, cursor: 'pointer'
+                }}
               >
                 📋 Copy values to clipboard
               </button>
-              <div style={{ fontSize:11, color:'#e2b96f', fontWeight:600, marginTop:4 }}>Right hand</div>
+              <div style={{ fontSize: 11, color: '#e2b96f', fontWeight: 600, marginTop: 4 }}>Right hand</div>
               {['X', 'Y', 'Z'].map((axis, i) => (
-                <div key={`r${axis}`} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:11, color:'#718096', width:14 }}>{axis}</span>
+                <div key={`r${axis}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11, color: '#718096', width: 14 }}>{axis}</span>
                   <input type="range" min="-3.15" max="3.15" step="0.01"
-                    value={restRotationR[i]} onChange={e => setR(i, parseFloat(e.target.value))} style={{ flex:1 }} />
-                  <span style={{ fontSize:11, color:'#e2b96f', width:42, textAlign:'right' }}>{restRotationR[i].toFixed(2)}</span>
+                    value={restRotationR[i]} onChange={e => setR(i, parseFloat(e.target.value))} style={{ flex: 1 }} />
+                  <span style={{ fontSize: 11, color: '#e2b96f', width: 42, textAlign: 'right' }}>{restRotationR[i].toFixed(2)}</span>
                 </div>
               ))}
-              <div style={{ fontSize:11, color:'#60a5fa', fontWeight:600, marginTop:4 }}>Left hand</div>
+              <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 600, marginTop: 4 }}>Left hand</div>
               {['X', 'Y', 'Z'].map((axis, i) => (
-                <div key={`l${axis}`} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:11, color:'#718096', width:14 }}>{axis}</span>
+                <div key={`l${axis}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11, color: '#718096', width: 14 }}>{axis}</span>
                   <input type="range" min="-3.15" max="3.15" step="0.01"
-                    value={restRotationL[i]} onChange={e => setL(i, parseFloat(e.target.value))} style={{ flex:1 }} />
-                  <span style={{ fontSize:11, color:'#60a5fa', width:42, textAlign:'right' }}>{restRotationL[i].toFixed(2)}</span>
+                    value={restRotationL[i]} onChange={e => setL(i, parseFloat(e.target.value))} style={{ flex: 1 }} />
+                  <span style={{ fontSize: 11, color: '#60a5fa', width: 42, textAlign: 'right' }}>{restRotationL[i].toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -2121,60 +2133,64 @@ if (loading) return (<div style={s.page}>
           {/* ── Section: Biomechanical Limits ── */}
           <div
             onClick={() => setBioOpen(o => !o)}
-            style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-              padding:'10px 16px', cursor:'pointer',
-              borderBottom: bioOpen ? '1px solid rgba(255,255,255,0.07)' : 'none', userSelect:'none' }}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 16px', cursor: 'pointer',
+              borderBottom: bioOpen ? '1px solid rgba(255,255,255,0.07)' : 'none', userSelect: 'none'
+            }}
           >
-            <span style={{ fontSize:11, fontWeight:600, color:'#a0aec0', letterSpacing:'0.8px', textTransform:'uppercase' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#a0aec0', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
               🦴 Biomechanical Limits
             </span>
-            <span style={{ fontSize:11, color:'#4a5568' }}>{bioOpen ? '▲' : '▼'}</span>
+            <span style={{ fontSize: 11, color: '#4a5568' }}>{bioOpen ? '▲' : '▼'}</span>
           </div>
           {bioOpen && (
-            <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
-                onClick={() => { setWristLimits({...DEFAULT_WRIST_LIMITS}); setFingerLimits({...DEFAULT_FINGER_LIMITS}); }}
-                style={{ fontSize:11, padding:'5px 10px', background:'rgba(255,255,255,0.05)',
-                  color:'#a0aec0', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, cursor:'pointer' }}
+                onClick={() => { setWristLimits({ ...DEFAULT_WRIST_LIMITS }); setFingerLimits({ ...DEFAULT_FINGER_LIMITS }); }}
+                style={{
+                  fontSize: 11, padding: '5px 10px', background: 'rgba(255,255,255,0.05)',
+                  color: '#a0aec0', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer'
+                }}
               >
                 Reset to anatomical defaults
               </button>
 
               {/* Wrist limits */}
-              <div style={{ fontSize:11, color:'#e2b96f', fontWeight:600, marginTop:4 }}>Wrist (degrees)</div>
+              <div style={{ fontSize: 11, color: '#e2b96f', fontWeight: 600, marginTop: 4 }}>Wrist (degrees)</div>
               {[
-                { key:'flexion',    label:'Flexion',    min:0, max:120 },
-                { key:'extension',  label:'Extension',  min:0, max:90  },
-                { key:'radial',     label:'Radial Dev', min:0, max:40  },
-                { key:'ulnar',      label:'Ulnar Dev',  min:0, max:50  },
-                { key:'pronation',  label:'Pronation',  min:0, max:180 },
-                { key:'supination', label:'Supination', min:0, max:180 },
+                { key: 'flexion', label: 'Flexion', min: 0, max: 120 },
+                { key: 'extension', label: 'Extension', min: 0, max: 90 },
+                { key: 'radial', label: 'Radial Dev', min: 0, max: 40 },
+                { key: 'ulnar', label: 'Ulnar Dev', min: 0, max: 50 },
+                { key: 'pronation', label: 'Pronation', min: 0, max: 180 },
+                { key: 'supination', label: 'Supination', min: 0, max: 180 },
               ].map(({ key, label, min, max }) => (
-                <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span style={{ fontSize:10, color:'#718096', width:72, flexShrink:0 }}>{label}</span>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10, color: '#718096', width: 72, flexShrink: 0 }}>{label}</span>
                   <input type="range" min={min} max={max} step="1"
                     value={wristLimits[key]}
                     onChange={e => setWristLimits(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-                    style={{ flex:1 }} />
-                  <span style={{ fontSize:10, color:'#e2b96f', width:32, textAlign:'right' }}>{wristLimits[key]}°</span>
+                    style={{ flex: 1 }} />
+                  <span style={{ fontSize: 10, color: '#e2b96f', width: 32, textAlign: 'right' }}>{wristLimits[key]}°</span>
                 </div>
               ))}
 
               {/* Finger limits */}
-              <div style={{ fontSize:11, color:'#60a5fa', fontWeight:600, marginTop:8 }}>Fingers (degrees)</div>
+              <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 600, marginTop: 8 }}>Fingers (degrees)</div>
               {[
-                { key:'pitchMin', label:'Curl min',   min:-20, max:0   },
-                { key:'pitchMax', label:'Curl max',   min:60,  max:150 },
-                { key:'yawMin',   label:'Splay min',  min:-45, max:0   },
-                { key:'yawMax',   label:'Splay max',  min:0,   max:45  },
+                { key: 'pitchMin', label: 'Curl min', min: -20, max: 0 },
+                { key: 'pitchMax', label: 'Curl max', min: 60, max: 150 },
+                { key: 'yawMin', label: 'Splay min', min: -45, max: 0 },
+                { key: 'yawMax', label: 'Splay max', min: 0, max: 45 },
               ].map(({ key, label, min, max }) => (
-                <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span style={{ fontSize:10, color:'#718096', width:72, flexShrink:0 }}>{label}</span>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10, color: '#718096', width: 72, flexShrink: 0 }}>{label}</span>
                   <input type="range" min={min} max={max} step="1"
                     value={fingerLimits[key]}
                     onChange={e => setFingerLimits(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-                    style={{ flex:1 }} />
-                  <span style={{ fontSize:10, color:'#60a5fa', width:32, textAlign:'right' }}>{fingerLimits[key]}°</span>
+                    style={{ flex: 1 }} />
+                  <span style={{ fontSize: 10, color: '#60a5fa', width: 32, textAlign: 'right' }}>{fingerLimits[key]}°</span>
                 </div>
               ))}
             </div>
@@ -2190,88 +2206,88 @@ if (loading) return (<div style={s.page}>
 const s = {
   page: { minHeight: '100vh', background: '#0d0f1a', fontFamily: "'DM Sans', sans-serif", color: '#e2e8f0', display: 'flex', flexDirection: 'column' },
 
-  nav: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', height:60, background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.07)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:20 },
-  navBrand: { display:'flex', alignItems:'center', gap:10 },
-  navName: { fontFamily:"'Playfair Display', serif", fontSize:18, fontWeight:600, color:'#ffffff', letterSpacing:'0.5px' },
-  navDivider: { color:'rgba(255,255,255,0.15)', fontSize:16 },
-  navSub: { fontSize:13, color:'#a0aec0', fontWeight:300 },
-  navRight: { position:'relative' },
-  userPill: { display:'flex', alignItems:'center', gap:9, padding:'5px 12px 5px 5px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:100, cursor:'pointer' },
-  avatar: { width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg, #0f3460, #e2b96f)', color:'#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, letterSpacing:'0.5px', flexShrink:0 },
-  userName: { fontSize:13, fontWeight:500, color:'#e2e8f0' },
-  chevron: { fontSize:10, color:'#a0aec0' },
-  dropdown: { position:'absolute', top:'calc(100% + 8px)', right:0, background:'#1a1f35', borderRadius:16, boxShadow:'0 16px 48px rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.08)', minWidth:200, overflow:'hidden', animation:'slideDown 0.15s ease', zIndex:100 },
-  ddHeader: { display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'rgba(255,255,255,0.03)' },
-  ddName: { fontSize:13, fontWeight:500, color:'#e2e8f0' },
-  ddEmail: { fontSize:11, color:'#718096' },
-  ddDivider: { height:1, background:'rgba(255,255,255,0.06)' },
-  ddItem: { display:'block', width:'100%', padding:'10px 16px', background:'transparent', border:'none', textAlign:'left', fontSize:13, color:'#a0aec0', cursor:'pointer', transition:'background 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 60, background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 20 },
+  navBrand: { display: 'flex', alignItems: 'center', gap: 10 },
+  navName: { fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 600, color: '#ffffff', letterSpacing: '0.5px' },
+  navDivider: { color: 'rgba(255,255,255,0.15)', fontSize: 16 },
+  navSub: { fontSize: 13, color: '#a0aec0', fontWeight: 300 },
+  navRight: { position: 'relative' },
+  userPill: { display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 5px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 100, cursor: 'pointer' },
+  avatar: { width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #0f3460, #e2b96f)', color: '#1a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.5px', flexShrink: 0 },
+  userName: { fontSize: 13, fontWeight: 500, color: '#e2e8f0' },
+  chevron: { fontSize: 10, color: '#a0aec0' },
+  dropdown: { position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#1a1f35', borderRadius: 16, boxShadow: '0 16px 48px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', minWidth: 200, overflow: 'hidden', animation: 'slideDown 0.15s ease', zIndex: 100 },
+  ddHeader: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'rgba(255,255,255,0.03)' },
+  ddName: { fontSize: 13, fontWeight: 500, color: '#e2e8f0' },
+  ddEmail: { fontSize: 11, color: '#718096' },
+  ddDivider: { height: 1, background: 'rgba(255,255,255,0.06)' },
+  ddItem: { display: 'block', width: '100%', padding: '10px 16px', background: 'transparent', border: 'none', textAlign: 'left', fontSize: 13, color: '#a0aec0', cursor: 'pointer', transition: 'background 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  body: { flex:1, display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(280px, 30vw)', gap:'2.5vw', padding:'2.5vw', maxWidth:'96vw', margin:'0 auto', width:'100%' },
-  leftCol: { display:'flex', flexDirection:'column', gap:'2vw', minWidth:0 },
-  rightCol: { display:'flex', flexDirection:'column', gap:'1.6vw', minWidth:0 },
+  body: { flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 30vw)', gap: '2.5vw', padding: '2.5vw', maxWidth: '96vw', margin: '0 auto', width: '100%' },
+  leftCol: { display: 'flex', flexDirection: 'column', gap: '2vw', minWidth: 0 },
+  rightCol: { display: 'flex', flexDirection: 'column', gap: '1.6vw', minWidth: 0 },
 
-  titleRow: { display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
-  title: { fontFamily:"'Playfair Display', serif", fontSize:26, fontWeight:600, color:'#ffffff', marginBottom:4 },
-  subtitle: { fontSize:13, color:'#718096', fontWeight:300 },
+  titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 600, color: '#ffffff', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#718096', fontWeight: 300 },
 
-  viewport: { flex:1, minHeight:'55vh', height:'60vh', maxHeight:'72vh', background:'linear-gradient(145deg, #0a0c18, #111827)', borderRadius:20, border:'1px solid rgba(255,255,255,0.06)', boxShadow:'inset 0 0 60px rgba(0,0,0,0.4)' },
-  viewportLabel: { position:'absolute', top:14, left:18, zIndex:2, fontSize:11, fontWeight:500, color:'#4a5568', letterSpacing:'1px', textTransform:'uppercase' },
-  viewportOverlay: { position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' },
-  viewportIcon: { fontSize:40, marginBottom:12, opacity:0.3 },
-  viewportHint: { fontSize:13, color:'#4a5568' },
+  viewport: { flex: 1, minHeight: '55vh', height: '60vh', maxHeight: '72vh', background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)' },
+  viewportLabel: { position: 'absolute', top: 14, left: 18, zIndex: 2, fontSize: 11, fontWeight: 500, color: '#4a5568', letterSpacing: '1px', textTransform: 'uppercase' },
+  viewportOverlay: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
+  viewportIcon: { fontSize: 40, marginBottom: 12, opacity: 0.3 },
+  viewportHint: { fontSize: 13, color: '#4a5568' },
 
-  controlRow: { display:'flex', gap:12, alignItems:'center' },
-  calibBtn: { display:'flex', alignItems:'center', gap:8, padding:'11px 20px', background:'rgba(226,185,111,0.08)', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
-  connectedBadge: { display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#34d399' },
-  connDot: { width:8, height:8, borderRadius:'50%', background:'#34d399', display:'inline-block' },
+  controlRow: { display: 'flex', gap: 12, alignItems: 'center' },
+  calibBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: 'rgba(226,185,111,0.08)', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
+  connectedBadge: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#34d399' },
+  connDot: { width: 8, height: 8, borderRadius: '50%', background: '#34d399', display: 'inline-block' },
 
-  panel: { background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:18, padding:20 },
-  panelHeader: { marginBottom:16 },
-  panelTitle: { fontSize:14, fontWeight:500, color:'#e2e8f0', marginBottom:3 },
-  panelSub: { fontSize:12, color:'#718096', fontWeight:300 },
+  panel: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: 20 },
+  panelHeader: { marginBottom: 16 },
+  panelTitle: { fontSize: 14, fontWeight: 500, color: '#e2e8f0', marginBottom: 3 },
+  panelSub: { fontSize: 12, color: '#718096', fontWeight: 300 },
 
-  calSection: { marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.06)' },
-  calSectionTitle: { fontSize:12, fontWeight:600, color:'#a0aec0', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.5px' },
+  calSection: { marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' },
+  calSectionTitle: { fontSize: 12, fontWeight: 600, color: '#a0aec0', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' },
 
-  calRow: { display:'flex', alignItems:'center', flexWrap:'wrap', gap:8, marginBottom:10 },
-  calBtn: { padding:'8px 12px', background:'#1a1a2e', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:10, fontSize:12, cursor:'pointer', fontFamily:"'DM Sans', sans-serif" },
-  calBtnSecondary: { padding:'8px 10px', background:'rgba(255,255,255,0.04)', color:'#a0aec0', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, fontSize:12, cursor:'pointer', fontFamily:"'DM Sans', sans-serif" },
-  calLabel: { fontSize:11, color:'#a0aec0' },
-  calSelect: { padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calInput: { width:70, padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calInputWide: { flex:1, minWidth:140, padding:'6px 8px', borderRadius:8, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:11 },
-  calStatus: { fontSize:11, color:'#60a5fa' },
-  calHint: { fontSize:11, color:'#718096', marginBottom:8 },
-  calError: { fontSize:11, color:'#ef4444', marginBottom:8 },
-  calSteps: { display:'flex', flexDirection:'column', gap:6, marginBottom:10 },
-  calStep: { display:'flex', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', fontSize:11, color:'#a0aec0' },
-  calStepActive: { border:'1px solid rgba(226,185,111,0.35)', color:'#e2b96f' },
-  calStepDone: { border:'1px solid rgba(52,211,153,0.35)', color:'#34d399' },
-  calRawGrid: { display:'grid', gridTemplateColumns:'repeat(4, minmax(0, 1fr))', gap:6, marginTop:8 },
-  calRawCell: { display:'flex', flexDirection:'column', gap:2, padding:'6px 8px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', fontSize:10, color:'#a0aec0' },
+  calRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  calBtn: { padding: '8px 12px', background: '#1a1a2e', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+  calBtnSecondary: { padding: '8px 10px', background: 'rgba(255,255,255,0.04)', color: '#a0aec0', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+  calLabel: { fontSize: 11, color: '#a0aec0' },
+  calSelect: { padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calInput: { width: 70, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calInputWide: { flex: 1, minWidth: 140, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 },
+  calStatus: { fontSize: 11, color: '#60a5fa' },
+  calHint: { fontSize: 11, color: '#718096', marginBottom: 8 },
+  calError: { fontSize: 11, color: '#ef4444', marginBottom: 8 },
+  calSteps: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 },
+  calStep: { display: 'flex', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: '#a0aec0' },
+  calStepActive: { border: '1px solid rgba(226,185,111,0.35)', color: '#e2b96f' },
+  calStepDone: { border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' },
+  calRawGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginTop: 8 },
+  calRawCell: { display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', fontSize: 10, color: '#a0aec0' },
 
-  fieldGroup: { display:'flex', flexDirection:'column', gap:8, marginBottom:14 },
-  label: { fontSize:12, color:'#a0aec0', fontWeight:500 },
-  input: { padding:'11px 14px', borderRadius:10, border:'1px solid rgba(255,255,255,0.10)', background:'rgba(255,255,255,0.04)', color:'#e2e8f0', fontSize:14, fontFamily:"'DM Sans', sans-serif", transition:'border-color 0.2s, box-shadow 0.2s' },
-  inputFocus: { borderColor:'rgba(226,185,111,0.5)', boxShadow:'0 0 0 3px rgba(226,185,111,0.08)' },
-  startBtn: { width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', background:'#dc2626', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  fieldGroup: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 },
+  label: { fontSize: 12, color: '#a0aec0', fontWeight: 500 },
+  input: { padding: '11px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 14, fontFamily: "'DM Sans', sans-serif", transition: 'border-color 0.2s, box-shadow 0.2s' },
+  inputFocus: { borderColor: 'rgba(226,185,111,0.5)', boxShadow: '0 0 0 3px rgba(226,185,111,0.08)' },
+  startBtn: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  emptySignsBox: { display:'flex', flexDirection:'column', alignItems:'center', padding:'24px 12px', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed rgba(255,255,255,0.08)' },
-  emptySignsIcon: { fontSize:28, opacity:0.3, marginBottom:8 },
-  emptySignsText: { fontSize:12, color:'#4a5568', textAlign:'center' },
+  emptySignsBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.08)' },
+  emptySignsIcon: { fontSize: 28, opacity: 0.3, marginBottom: 8 },
+  emptySignsText: { fontSize: 12, color: '#4a5568', textAlign: 'center' },
 
-  signsList: { display:'flex', flexDirection:'column', gap:8 },
-  signTag: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'rgba(255,255,255,0.04)', borderRadius:10, border:'1px solid rgba(255,255,255,0.07)', transition:'border-color 0.2s' },
-  signTagLeft: { display:'flex', alignItems:'center', gap:10 },
-  signTagIndex: { width:22, height:22, borderRadius:'50%', background:'rgba(226,185,111,0.15)', color:'#e2b96f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700 },
-  signTagLabel: { fontSize:13.5, fontWeight:500, color:'#e2e8f0' },
-  signTagMeta: { fontSize:11, color:'#718096', marginTop:1 },
-  removeSign: { padding:'4px 8px', background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:12, opacity:0, transition:'opacity 0.2s', borderRadius:6 },
+  signsList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  signTag: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' },
+  signTagLeft: { display: 'flex', alignItems: 'center', gap: 10 },
+  signTagIndex: { width: 22, height: 22, borderRadius: '50%', background: 'rgba(226,185,111,0.15)', color: '#e2b96f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 },
+  signTagLabel: { fontSize: 13.5, fontWeight: 500, color: '#e2e8f0' },
+  signTagMeta: { fontSize: 11, color: '#718096', marginTop: 1 },
+  removeSign: { padding: '4px 8px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, opacity: 0, transition: 'opacity 0.2s', borderRadius: 6 },
 
-  uploadBtn: { width:'100%', padding:13, background:'#1a1a2e', color:'#e2b96f', border:'1px solid rgba(226,185,111,0.25)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif", letterSpacing:'0.3px' },
-  successBanner: { marginTop:12, padding:'10px 14px', background:'rgba(5,150,105,0.12)', border:'1px solid rgba(5,150,105,0.25)', borderRadius:10, fontSize:12.5, color:'#34d399' },
-  disabledNote: { marginTop:10, fontSize:11.5, color:'#4a5568' },
+  uploadBtn: { width: '100%', padding: 13, background: '#1a1a2e', color: '#e2b96f', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.3px' },
+  successBanner: { marginTop: 12, padding: '10px 14px', background: 'rgba(5,150,105,0.12)', border: '1px solid rgba(5,150,105,0.25)', borderRadius: 10, fontSize: 12.5, color: '#34d399' },
+  disabledNote: { marginTop: 10, fontSize: 11.5, color: '#4a5568' },
   closeBtn: {
     width: 34, height: 34, borderRadius: '50%',
     border: 'none', background: 'transparent',
@@ -2279,51 +2295,51 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'background 0.2s', flexShrink: 0,
   },
-  sensorGrid: { display:'flex', flexDirection:'column', gap:6 },
-  sensorRow: { display:'flex', alignItems:'center', gap:10 },
-  sensorKey: { fontSize:11.5, color:'#718096', width:50 },
-  sensorBarBg: { flex:1, height:4, background:'#1a1f35', borderRadius:4, overflow:'hidden' },
-  sensorBarFill: { height:'100%', background:'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius:4, transition:'width 0.2s' },
-  sensorVal: { fontSize:11, color:'#e2b96f', width:34, textAlign:'right' },
+  sensorGrid: { display: 'flex', flexDirection: 'column', gap: 6 },
+  sensorRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  sensorKey: { fontSize: 11.5, color: '#718096', width: 50 },
+  sensorBarBg: { flex: 1, height: 4, background: '#1a1f35', borderRadius: 4, overflow: 'hidden' },
+  sensorBarFill: { height: '100%', background: 'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius: 4, transition: 'width 0.2s' },
+  sensorVal: { fontSize: 11, color: '#e2b96f', width: 34, textAlign: 'right' },
 };
 
 // ─── Modal styles ─────────────────────────────────────────────────────────────
 const rm = {
-  overlay: { position:'fixed', inset:0, background:'rgba(5,7,18,0.85)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, animation:'fadeIn 0.2s ease', padding:24 },
-  modal: { background:'#0d1020', border:'1px solid rgba(255,255,255,0.08)', borderRadius:24, width:'100%', maxWidth:900, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 80px rgba(0,0,0,0.7)', animation:'slideUp 0.3s ease' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(5,7,18,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, animation: 'fadeIn 0.2s ease', padding: 24 },
+  modal: { background: '#0d1020', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, width: '100%', maxWidth: 900, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.7)', animation: 'slideUp 0.3s ease' },
 
-  header: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 24px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  headerLeft: { display:'flex', alignItems:'center', gap:14 },
-  headerRight: {display: 'flex'},
-  signChip: { display:'flex', alignItems:'center', gap:8, padding:'6px 14px', background:'rgba(226,185,111,0.10)', border:'1px solid rgba(226,185,111,0.25)', borderRadius:100 },
-  signChipIcon: { fontSize:16 },
-  signChipText: { fontSize:14, fontWeight:600, color:'#e2b96f' },
-  recBadge: { display:'flex', alignItems:'center', gap:8, padding:'5px 12px', borderRadius:100, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', color:'#ef4444', fontSize:12, fontWeight:500 },
-  recDot: { width:8, height:8, borderRadius:'50%', background:'#ef4444', display:'inline-block' },
-  playBadge: { fontSize:12, color:'#34d399', padding:'5px 12px', background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.20)', borderRadius:100 },
-  durationLabel: { fontSize:13, color:'#718096',display: 'flex', alignItems: 'center', marginRight: '10px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 14 },
+  headerRight: { display: 'flex' },
+  signChip: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'rgba(226,185,111,0.10)', border: '1px solid rgba(226,185,111,0.25)', borderRadius: 100 },
+  signChipIcon: { fontSize: 16 },
+  signChipText: { fontSize: 14, fontWeight: 600, color: '#e2b96f' },
+  recBadge: { display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 100, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 12, fontWeight: 500 },
+  recDot: { width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' },
+  playBadge: { fontSize: 12, color: '#34d399', padding: '5px 12px', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.20)', borderRadius: 100 },
+  durationLabel: { fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', marginRight: '10px' },
 
-  viewport: { position: 'relative', width: '100%',height: '380px', background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)', overflow: 'hidden', display: 'flex', flexDirection: 'column'},
-  vpLabel: { position:'absolute', top:12, left:16, zIndex:2, fontSize:10, color:'#4a5568', letterSpacing:'1.5px', textTransform:'uppercase' },
-  vpOverlay: { position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' },
+  viewport: { position: 'relative', width: '100%', height: '380px', background: 'linear-gradient(145deg, #0a0c18, #111827)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4)', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+  vpLabel: { position: 'absolute', top: 12, left: 16, zIndex: 2, fontSize: 10, color: '#4a5568', letterSpacing: '1.5px', textTransform: 'uppercase' },
+  vpOverlay: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
 
-  controls: { padding:'18px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.02)', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  controlHint: { fontSize:13, color:'#4a5568' },
-  stopBtn: { display:'flex', alignItems:'center', gap:8, padding:'12px 28px', background:'#dc2626', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  controls: { padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  controlHint: { fontSize: 13, color: '#4a5568' },
+  stopBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 
-  trimSection: { padding:'18px 24px', background:'rgba(255,255,255,0.02)', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 },
-  trimHeader: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 },
-  trimTitle: { fontSize:14, fontWeight:500, color:'#e2e8f0' },
-  trimMeta: { fontSize:12, color:'#718096' },
-  sliders: { marginBottom:16 },
-  sliderGroup: { marginBottom:12 },
-  sliderRow: { display:'flex', justifyContent:'space-between', marginBottom:6 },
-  sliderLabel: { fontSize:12, color:'#a0aec0' },
-  sliderVal: { fontSize:12, color:'#e2b96f', fontWeight:500 },
-  trimBar: { height:6, background:'#1a1f35', borderRadius:6, overflow:'hidden', marginTop:4 },
-  trimFill: { position:'absolute', height:'100%', background:'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius:6 },
+  trimSection: { padding: '18px 24px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  trimHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  trimTitle: { fontSize: 14, fontWeight: 500, color: '#e2e8f0' },
+  trimMeta: { fontSize: 12, color: '#718096' },
+  sliders: { marginBottom: 16 },
+  sliderGroup: { marginBottom: 12 },
+  sliderRow: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 },
+  sliderLabel: { fontSize: 12, color: '#a0aec0' },
+  sliderVal: { fontSize: 12, color: '#e2b96f', fontWeight: 500 },
+  trimBar: { height: 6, background: '#1a1f35', borderRadius: 6, overflow: 'hidden', marginTop: 4 },
+  trimFill: { position: 'absolute', height: '100%', background: 'linear-gradient(90deg, #0f3460, #e2b96f)', borderRadius: 6 },
 
-  actionRow: { display:'flex', gap:12, justifyContent:'flex-end' },
-  discardBtn: { padding:'11px 22px', background:'rgba(239,68,68,0.06)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.20)', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.15s, color 0.15s', fontFamily:"'DM Sans', sans-serif" },
-  saveSignBtn: { padding:'11px 28px', background:'#059669', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor:'pointer', transition:'background 0.2s, transform 0.15s', fontFamily:"'DM Sans', sans-serif" },
+  actionRow: { display: 'flex', gap: 12, justifyContent: 'flex-end' },
+  discardBtn: { padding: '11px 22px', background: 'rgba(239,68,68,0.06)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.20)', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s, color 0.15s', fontFamily: "'DM Sans', sans-serif" },
+  saveSignBtn: { padding: '11px 28px', background: '#059669', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, transform 0.15s', fontFamily: "'DM Sans', sans-serif" },
 };

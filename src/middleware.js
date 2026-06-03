@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function middleware(request) {
   let response = NextResponse.next();
-  console.log("MIDDLEWARE RUNNING:", request.nextUrl.pathname);
+  //console.log("MIDDLEWARE RUNNING:", request.nextUrl.pathname);
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
