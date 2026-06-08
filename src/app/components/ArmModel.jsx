@@ -350,14 +350,14 @@ export function CombinedArmRig({
     if (!nodes) return;
     axesHelpersRef.current = [];
 
-    // Create World-Space Axes Helpers for the main arm bones to avoid skeletal scale/shear distortions
+    /* // Create World-Space Axes Helpers for the main arm bones to avoid skeletal scale/shear distortions
     [armBones.rUpper, armBones.rForearm, armBones.rHand, armBones.lUpper, armBones.lForearm, armBones.lHand].forEach(bone => {
       if (bone) {
         const axesHelper = createCustomAxes(15);
         if (group.current) group.current.add(axesHelper);
         axesHelpersRef.current.push({ helper: axesHelper, bone });
       }
-    });
+    }); */
 
     if (onRestPosesLoaded && armBones.rUpper) {
       onRestPosesLoaded({
