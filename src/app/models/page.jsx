@@ -69,9 +69,9 @@ export default function ModelsPage() {
 
       // 1. Get model brief first
       const res = await fetch(`${backendUrl}/models/models`);
-      const data = await res.json();
+      const data = await res?.json();
       //console.log("models:", data);
-      setModels(data);
+      setModels(Array.isArray(data) ? data : []);
 
       // 2. Get user
       const { data: { user } } = await supabase.auth.getUser();
@@ -80,14 +80,14 @@ export default function ModelsPage() {
       //console.log("Authenticated user:", user);
       const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
       const userData = await userRes.json();
-      setUser(userData[0]);
+      setUser(userData?.[0] || null);
       //console.log("Profile info:", userData);
 
       //3. Get Languages
       const res2 = await fetch(`${backendUrl}/languages/languages`);
       const data2 = await res2.json();
       //console.log("languages:", data2);
-      setLanguages(data2);
+      setLanguages(Array.isArray(data2) ? data2 : []);
 
       setLoading(false);
     }
@@ -100,11 +100,11 @@ export default function ModelsPage() {
     const res = await fetch(`${backendUrl}/models/models`);
     const data = await res.json();
     //console.log("models:", data);
-    setModels(data);
+    setModels(Array.isArray(data) ? data : []);
     const res2 = await fetch(`${backendUrl}/languages/languages`);
     const data2 = await res2.json();
     //console.log("languages:", data2);
-    setLanguages(data2);
+    setLanguages(Array.isArray(data2) ? data2 : []);
     setLoading(false);
   };
 

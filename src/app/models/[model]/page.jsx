@@ -85,27 +85,33 @@ export default function SubmissionsPage() {
       const res = await fetch(`${backendUrl}/models/brief/${modelId}`);
       const data = await res.json();
       //console.log("Model brief data:", data);
-      const fetchedLanguageId = data[0].lid;
-      const fetchedModelName = data[0].model_name;
+      const fetchedLanguageId = data?.[0]?.lid;
+      const fetchedModelName = data?.[0]?.model_name || "Unknown Model";
       setModel(fetchedModelName);
 
       // 2. Get user
       const { data: { user } } = await supabase.auth.getUser();
-      setUserEmail(user.email);
-      setUserId(user.id);
+      setUserEmail(user?.email || "");
+      setUserId(user?.id || "");
       //console.log("Authenticated user:", user);
-      const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
-      const userData = await userRes.json();
-      setUser(userData[0]);
+      if (user?.id) {
+        const userRes = await fetch(`${backendUrl}/profile/info?userId=${user.id}`);
+        const userData = await userRes.json();
+        setUser(userData?.[0] || null);
+      }
       //console.log("Profile info:", userData);
 
       // 3. Now fetch submissions
-      const subRes = await fetch(
-        `${backendUrl}/submissions/available?languageId=${fetchedLanguageId}&modelId=${modelId}`
-      );
-      const subData = await subRes.json();
-      //console.log("Fetched submissions:", subData);
-      setSubmissions(Array.isArray(subData) ? subData : []);
+      if (fetchedLanguageId) {
+        const subRes = await fetch(
+          `${backendUrl}/submissions/available?languageId=${fetchedLanguageId}&modelId=${modelId}`
+        );
+        const subData = await subRes.json();
+        //console.log("Fetched submissions:", subData);
+        setSubmissions(Array.isArray(subData) ? subData : []);
+      } else {
+        setSubmissions([]);
+      }
 
       setLoading(false);
     }
