@@ -1422,12 +1422,12 @@ function RecordingModal({
 export default function GloveCapture() {
   const router = useRouter();
 
-  const [espIp, setEspIp] = useState("192.168.1.8");
-  const [ipInput, setIpInput] = useState("192.168.1.8");
+  const [espIp, setEspIp] = useState("");
+  const [ipInput, setIpInput] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem('espIp');
-    const defaultIp = saved || process.env.NEXT_PUBLIC_ESP_IP || '192.168.1.8';
+    const defaultIp = saved || process.env.NEXT_PUBLIC_ESP_IP || '';
     setEspIp(defaultIp);
     setIpInput(defaultIp);
   }, []);
@@ -2506,6 +2506,25 @@ export default function GloveCapture() {
             </div>
           </div>
 
+          {/* Global Connection Settings */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              🌐 ESP32 Connection
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                style={{ ...s.calInput, flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px 12px' }}
+                value={ipInput}
+                onChange={e => setIpInput(e.target.value)}
+                placeholder="Enter portable router IP (e.g. 192.168.1.8)"
+              />
+              <button style={{ ...s.calBtn, padding: '8px 16px' }} onClick={handleApplyIp}>
+                Connect
+              </button>
+            </div>
+          </div>
+
           {/* Live 3-D preview */}
           <div style={s.viewport}>
             <div style={s.viewportLabel}>LIVE PREVIEW</div>
@@ -2861,24 +2880,7 @@ export default function GloveCapture() {
                         </div>
                         <p style={s.calHint}>JSON includes all knots and coupling coefficients. Import sends CMD 0x10 and 0x11 for all axes automatically.</p>
                       </div>
-                      {/* Connection Settings */}
-                      <div style={s.calSection}>
-                        <div style={s.calSectionTitle}>🌐 Connection Settings</div>
-                        <p style={s.calHint}>Set the WebSocket IP address of the Master ESP32.</p>
-                        <div style={s.calRow}>
-                          <label style={s.calLabel}>IP Address</label>
-                          <input
-                            type="text"
-                            style={{ ...s.calInput, flex: 1 }}
-                            value={ipInput}
-                            onChange={e => setIpInput(e.target.value)}
-                            placeholder="e.g. 192.168.1.8"
-                          />
-                          <button style={s.calBtn} onClick={handleApplyIp}>
-                            Connect
-                          </button>
-                        </div>
-                      </div>
+                      {/* (Connection Settings was moved to the global header) */}
                     </div>
                   )}
                 </div>
